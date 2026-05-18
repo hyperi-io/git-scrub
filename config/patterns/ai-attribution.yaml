@@ -1,0 +1,48 @@
+# git-scrub — AI attribution patterns
+#
+# Each pattern is a regex tested against a commit-message line. Matching
+# lines are removed. After removal, the cleanup section is applied
+# (collapse blank-line runs, strip trailing whitespace).
+#
+# This file is config-driven on purpose: AI tools change their
+# attribution signatures often, and operators need to override or extend
+# the default set without recompiling.
+
+trailers:
+  claude:
+    - '^Co-Authored-By:\s*Claude\s*<noreply@anthropic\.com>\s*$'
+    - '^Co-authored-by:\s*Claude\s*<noreply@anthropic\.com>\s*$'
+    - '^Co-Authored-By:\s*Claude\s+(Opus|Sonnet|Haiku)\s+[\d.]+.*$'
+    - '^Co-authored-by:\s*Claude\s+(Opus|Sonnet|Haiku)\s+[\d.]+.*$'
+  copilot:
+    - '^Co-authored-by:\s*Copilot\s*<copilot@github\.com>\s*$'
+    - '^Co-authored-by:\s*GitHub Copilot.*$'
+  cursor:
+    - '^Co-authored-by:\s*Cursor\s*<cursoragent@cursor\.com>\s*$'
+    - '^Co-authored-by:\s*Cursor\s*<noreply@cursor\.com>\s*$'
+    - '^Made-with:\s*Cursor\s*$'
+  codex:
+    - '^Co-authored-by:\s*Codex\b.*$'
+    - '^Co-authored-by:\s*OpenAI Codex\b.*$'
+  aider:
+    - '^Co-authored-by:\s*aider\b.*$'
+  gemini:
+    - '^Co-authored-by:\s*Gemini\b.*$'
+    - '^Co-authored-by:\s*Google Gemini\b.*$'
+  windsurf:
+    - '^Co-authored-by:\s*Windsurf\b.*$'
+
+footers:
+  claude:
+    - '^🤖 Generated with \[Claude Code\]\(https://claude\.com/claude-code\)\s*$'
+    - '^Generated with Claude Code\s*$'
+  cursor:
+    - '^Generated with Cursor\b.*$'
+  copilot:
+    - '^Generated with GitHub Copilot\b.*$'
+  gemini:
+    - '^Generated with Gemini\b.*$'
+
+cleanup:
+  collapse_blank_runs: true
+  strip_trailing_whitespace: true

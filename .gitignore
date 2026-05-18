@@ -1,0 +1,46 @@
+# Rust build output
+/target/
+**/*.rs.bk
+Cargo.lock.bak
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Coverage / profiling
+*.profraw
+*.profdata
+tarpaulin-report.html
+cobertura.xml
+coverage.xml
+
+# Local agentic-coding scratch — local-only working artefacts (specs,
+# plans from brainstorming / writing-plans skills). These are dev
+# scratch, not part of the project's source of truth.
+docs/superpowers/
+
+# Editor-specific AI tool state (developer-local, never committed).
+.claude/
+.cursor/
+.codex/
+.aider*
+.continue/
+.windsurf/
+
+# Local scrub backups + runbooks (created at runtime under user cache —
+# shouldn't appear here, but guard against accidental in-tree creation).
+scrub-backups/
+scrub-runbooks/
+
+# Test fixtures that mint temp git repos
+/tests/**/.tmp/
+
+# Claude Code scratch workspace
+.tmp/

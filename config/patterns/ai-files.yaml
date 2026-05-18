@@ -1,0 +1,50 @@
+# git-scrub — AI artefact file patterns
+#
+# Each entry is a glob pattern matched against the forward-slash form of
+# the path as it appears in the git fast-export stream (git's internal
+# canonical representation, identical across all platforms). Trailing `/`
+# means "this directory and everything under it".
+#
+# The exclude_by_default section is the smart agentic-coding state-file
+# family. These files are commonly symlinked to a STATE.md master so all
+# AI coding tools (Claude, Gemini, Cursor, Codex, …) read the same
+# project state. Removing them by default would break agent integration.
+# Operators can purge them explicitly with `--include <name>`.
+
+purge:
+  claude:
+    - '.claude/**'
+    - '.claude-output/**'
+  cursor:
+    - '.cursor/**'
+    - '.cursorrules'
+  codex:
+    - '.codex/**'
+  copilot:
+    - '.copilot/**'
+  aider:
+    - '.aider/**'
+    - '.aider.tags.cache.v3/**'
+    - '.aider.conf.yml'
+    - '.aider.chat.history.md'
+    - '.aider.input.history'
+  continue:
+    - '.continue/**'
+  cody:
+    - '.cody/**'
+  windsurf:
+    - '.windsurf/**'
+    - '.windsurfrules'
+  replit:
+    - '.replit'
+    - 'replit.nix'
+  generic:
+    - '.specstory/**'
+
+exclude_by_default:
+  - 'STATE.md'
+  - 'CLAUDE.md'
+  - 'GEMINI.md'
+  - 'AGENTS.md'
+  - 'CURSOR.md'
+  - 'CODEX.md'
