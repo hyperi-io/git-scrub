@@ -20,6 +20,7 @@ Thumbs.db
 tarpaulin-report.html
 cobertura.xml
 coverage.xml
+test-results/
 
 # Local agentic-coding scratch — local-only working artefacts (specs,
 # plans from brainstorming / writing-plans skills). These are dev
