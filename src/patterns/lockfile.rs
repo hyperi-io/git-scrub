@@ -16,10 +16,12 @@
 /// A transformer that conditionally rewrites lockfile blob contents.
 pub trait LockfileRewriter: Send + Sync {
     /// Whether this rewriter applies to the given committed path.
+    #[must_use]
     fn applies_to(&self, path: &str) -> bool;
 
     /// Rewrite `content`. Return `None` when no change is needed
     /// (engine emits the original blob unchanged).
+    #[must_use]
     fn strip(&self, content: &[u8]) -> Option<Vec<u8>>;
 }
 
