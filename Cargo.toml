@@ -1,10 +1,15 @@
 #  Project:      git-scrub
 #  File:         Cargo.toml
-#  Purpose:      Crate manifest for the git-scrub binary
+#  Purpose:      Workspace root + git-scrub binary/library manifest
 #  Language:     Rust
 #
 #  License:      Apache-2.0
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
+
+[workspace]
+# `tools/refresh-advisories` will be added as a member in Phase 18.
+members = ["."]
+resolver = "3"
 
 [package]
 name = "git-scrub"
@@ -43,6 +48,8 @@ tempfile = "3.13"
 directories = "5.0"
 globset = "0.4"
 memchr = "2"
+toml = "1.1"
+semver = "1.0"
 
 [dev-dependencies]
 tempfile = "3.13"
