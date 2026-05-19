@@ -111,7 +111,7 @@ impl BlobRewriter {
         Ok(Self { rules })
     }
 
-    /// Returns `true` if the rewriter has no rules — [`apply`] is a no-op.
+    /// Returns `true` if the rewriter has no rules — [`Self::apply`] is a no-op.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.rules.is_empty()
