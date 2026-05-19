@@ -21,9 +21,12 @@
 //! "apply patterns to the current repo" case.
 
 pub mod backup;
+pub mod blob_cache;
 pub mod fast_export;
 pub mod fast_import;
 pub mod transform;
+
+pub use blob_cache::BlobCache;
 
 use std::path::Path;
 
