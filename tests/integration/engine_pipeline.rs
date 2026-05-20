@@ -153,4 +153,8 @@ fn lockfile_rewriter_strips_axios_from_cargo_lock() {
     // src/main.rs must be untouched.
     let main_after = repo.read_file_at_head("src/main.rs");
     assert_eq!(main_after, b"fn main() {}\n");
+
+    // Post-rewrite verify: a re-scan must find zero remaining lockfile matches.
+    verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
+        .expect("verify after lockfile rewrite must pass — axios should be gone");
 }

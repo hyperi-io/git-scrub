@@ -97,7 +97,7 @@ pub fn run_stream<R: Read, W: Write>(
                 )?;
             }
             RecordKind::Tag => {
-                process_tag(&line, &mut br, &mut writer, attribution)?;
+                process_tag(&line, &mut br, &mut writer, attribution, &mut next_mark)?;
             }
             RecordKind::Blob => {
                 stats.blobs_seen += 1;
@@ -257,10 +257,13 @@ struct MLinePlan {
 // Reads pre-data header lines (mark, original-oid, author, committer, etc.)
 // and the mandatory `data N` message block. Returns the pre-data lines,
 // the (possibly rewritten) message bytes, and whether attribution changed it.
+// `next_mark` is updated for any `mark :N` line seen so that synthetic mark
+// allocation never collides with commit marks in the input stream.
 #[allow(clippy::type_complexity)]
 fn read_commit_pre_data<R: BufRead>(
     br: &mut R,
     attribution: Option<&AttributionRewriter>,
+    next_mark: &mut u64,
 ) -> Result<(Vec<Vec<u8>>, Vec<u8>, bool), EngineError> {
     let mut pre_data: Vec<Vec<u8>> = Vec::new();
     loop {
@@ -284,6 +287,13 @@ fn read_commit_pre_data<R: BufRead>(
             };
             let changed = rewritten != buf;
             return Ok((pre_data, rewritten, changed));
+        }
+        // Keep next_mark ahead of every mark observed in the stream so synthetic
+        // blob marks allocated later in process_commit never collide.
+        if let Some(m) = parse_mark_line(&line)
+            && m >= *next_mark
+        {
+            *next_mark = m + 1;
         }
         pre_data.push(line);
     }
@@ -315,7 +325,8 @@ fn process_commit<R: BufRead, W: Write>(
 
     // Pre-data header lines (mark, original-oid, author, committer, encoding).
     // Message bytes and whether attribution changed it.
-    let (pre_data, msg_bytes, msg_rewritten) = read_commit_pre_data(br, attribution)?;
+    // next_mark is updated here so commit marks advance the counter.
+    let (pre_data, msg_bytes, msg_rewritten) = read_commit_pre_data(br, attribution, next_mark)?;
     // Post-data items (from, merge, file ops, blank terminator, or EOF sentinel).
     let mut post_lines: Vec<PostItem> = Vec::new();
     // Whether the commit was terminated by a blank line (vs EOF or next record).
@@ -356,8 +367,7 @@ fn process_commit<R: BufRead, W: Write>(
             continue;
         }
         // Check if this line is an inline M-line.
-        next_is_inline_data =
-            line.starts_with(b"M ") && line.windows(8).any(|w| w == b" inline ");
+        next_is_inline_data = line.starts_with(b"M ") && line.windows(8).any(|w| w == b" inline ");
         post_lines.push(PostItem::Line(line));
     }
 
@@ -400,7 +410,10 @@ fn process_commit<R: BufRead, W: Write>(
         }
 
         // For M-lines with mark references, plan blob emission.
-        if op == b'M' && !has_inline && let Some(blob_mark) = parse_m_line_mark(line) {
+        if op == b'M'
+            && !has_inline
+            && let Some(blob_mark) = parse_m_line_mark(line)
+        {
             let path_str = path.as_deref().unwrap_or("");
             // Check for lockfile rewrite.
             let rewritten_content = lockfiles.and_then(|lfs| {
@@ -518,7 +531,7 @@ fn process_commit<R: BufRead, W: Write>(
                     stats,
                 )?;
             }
-            RecordKind::Tag => process_tag(&la, br, writer, attribution)?,
+            RecordKind::Tag => process_tag(&la, br, writer, attribution, next_mark)?,
             RecordKind::Blob => {
                 stats.blobs_seen += 1;
                 cache_blob(&la, br, blob_cache, next_mark, blob, stats)?;
@@ -535,6 +548,7 @@ fn process_tag<R: BufRead, W: Write>(
     br: &mut R,
     writer: &mut W,
     attribution: Option<&AttributionRewriter>,
+    next_mark: &mut u64,
 ) -> Result<(), EngineError> {
     writer.write_all(header).map_err(EngineError::Io)?;
     let mut stats = EngineStats::default();
@@ -554,6 +568,13 @@ fn process_tag<R: BufRead, W: Write>(
                 /*is_commit=*/ false,
             )?;
             return Ok(());
+        }
+        // Keep next_mark ahead of every mark seen in the stream so synthetic
+        // blob mark allocation never collides with tag marks.
+        if let Some(m) = parse_mark_line(&line)
+            && m >= *next_mark
+        {
+            *next_mark = m + 1;
         }
         writer.write_all(&line).map_err(EngineError::Io)?;
     }
@@ -834,8 +855,7 @@ exclude_by_default: []
 
         let mut out: Vec<u8> = Vec::new();
         let attr = attribution();
-        let stats =
-            run_stream(&stream[..], &mut out, Some(&attr), None, None, None).unwrap();
+        let stats = run_stream(&stream[..], &mut out, Some(&attr), None, None, None).unwrap();
         assert_eq!(stats.commits_seen, 1);
         assert_eq!(stats.commits_rewritten, 1);
         let out_s = String::from_utf8_lossy(&out);
@@ -978,16 +998,94 @@ done
 
         let lfs: Vec<Box<dyn LockfileRewriter>> = vec![Box::new(StripAxios)];
         let mut out: Vec<u8> = Vec::new();
-        let stats =
-            run_stream(&stream[..], &mut out, None, None, None, Some(&lfs)).unwrap();
+        let stats = run_stream(&stream[..], &mut out, None, None, None, Some(&lfs)).unwrap();
 
         assert_eq!(stats.blobs_rewritten, 1, "one blob must be rewritten");
         let out_s = String::from_utf8_lossy(&out);
-        assert!(out_s.contains("REMOVED"), "rewritten content must appear: {out_s}");
-        assert!(out_s.contains("innocent"), "innocent content must survive: {out_s}");
+        assert!(
+            out_s.contains("REMOVED"),
+            "rewritten content must appear: {out_s}"
+        );
+        assert!(
+            out_s.contains("innocent"),
+            "innocent content must survive: {out_s}"
+        );
         assert!(
             !out_s.contains("axios"),
             "original content must be gone: {out_s}"
+        );
+    }
+
+    /// When a rewriter produces a synthetic blob it allocates `next_mark` and
+    /// increments it. Before this fix, `next_mark` was only advanced inside
+    /// `cache_blob` (blob records) — not inside `read_commit_pre_data` (commit
+    /// records). For the stream shape `blob :1 → commit :2 with M :1 Cargo.lock`
+    /// the synthetic blob was also assigned `:2`, producing a duplicate mark.
+    ///
+    /// This test asserts that every `mark :N` line in the output carries a
+    /// unique N — catching the collision that would have occurred before the fix.
+    #[test]
+    fn no_duplicate_marks_when_rewriter_allocates_synthetic_blob() {
+        use crate::patterns::LockfileRewriter;
+
+        struct AlwaysRewrite;
+        impl LockfileRewriter for AlwaysRewrite {
+            fn applies_to(&self, path: &str) -> bool {
+                path == "Cargo.lock"
+            }
+            fn strip(&self, content: &[u8]) -> Option<Vec<u8>> {
+                // Always produce a rewritten blob so a synthetic mark is allocated.
+                let mut out = content.to_vec();
+                out.extend_from_slice(b"# rewritten\n");
+                Some(out)
+            }
+        }
+
+        // Stream shape that triggers the bug:
+        //   blob  mark :1  (blob record — advances next_mark to 2)
+        //   commit mark :2  (commit record — before fix, next_mark stayed at 2)
+        //   M :1 Cargo.lock  (rewriter fires → allocates :2 as synthetic mark → collision)
+        let cargo_lock = b"axios=1.0\n";
+        let mut stream: Vec<u8> = Vec::new();
+        stream.extend_from_slice(b"blob\n");
+        stream.extend_from_slice(b"mark :1\n");
+        writeln!(&mut stream, "data {}", cargo_lock.len()).unwrap();
+        stream.extend_from_slice(cargo_lock);
+        stream.extend_from_slice(b"\n");
+        stream.extend_from_slice(b"commit refs/heads/main\n");
+        stream.extend_from_slice(b"mark :2\n");
+        stream.extend_from_slice(b"author T <t@example.com> 1700000000 +0000\n");
+        stream.extend_from_slice(b"committer T <t@example.com> 1700000000 +0000\n");
+        stream.extend_from_slice(b"data 4\n");
+        stream.extend_from_slice(b"init");
+        stream.extend_from_slice(b"\n");
+        stream.extend_from_slice(b"M 100644 :1 Cargo.lock\n");
+        stream.extend_from_slice(b"\n");
+        stream.extend_from_slice(b"done\n");
+
+        let lfs: Vec<Box<dyn LockfileRewriter>> = vec![Box::new(AlwaysRewrite)];
+        let mut out: Vec<u8> = Vec::new();
+        run_stream(&stream[..], &mut out, None, None, None, Some(&lfs)).unwrap();
+
+        // Collect all mark numbers from `mark :N` lines in the output.
+        let out_s = String::from_utf8_lossy(&out);
+        let marks: Vec<u64> = out_s
+            .lines()
+            .filter_map(|l| l.strip_prefix("mark :"))
+            .filter_map(|n| n.parse::<u64>().ok())
+            .collect();
+
+        assert!(
+            !marks.is_empty(),
+            "output must contain at least one mark line: {out_s}"
+        );
+
+        // All mark numbers must be distinct — any duplicate is a spec violation.
+        let unique_count = marks.iter().collect::<std::collections::HashSet<_>>().len();
+        assert_eq!(
+            unique_count,
+            marks.len(),
+            "duplicate mark numbers detected in output: {marks:?}\n---\n{out_s}"
         );
     }
 }
