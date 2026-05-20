@@ -31,10 +31,15 @@ pub const EMBEDDED_ATTRIBUTION: &str = include_str!("../../config/patterns/ai-at
 /// Embedded fallback for `ai-files.yaml` (compile-time).
 pub const EMBEDDED_FILES: &str = include_str!("../../config/patterns/ai-files.yaml");
 
+/// Embedded supply chain advisory snapshot — compile-time fallback.
+pub const EMBEDDED_SUPPLY_CHAIN: &str = include_str!("../../config/patterns/supply-chain.yaml");
+
 /// Pattern-file names recognised at runtime.
 pub const ATTRIBUTION_FILE: &str = "ai-attribution.yaml";
 /// Pattern-file names recognised at runtime.
 pub const FILES_FILE: &str = "ai-files.yaml";
+/// Discovery filename for the supply chain pattern file.
+pub const SUPPLY_CHAIN_FILE: &str = "supply-chain.yaml";
 
 /// Errors raised by pattern-file discovery.
 #[derive(Debug, Error)]
@@ -252,5 +257,21 @@ mod tests {
         assert_eq!(Source::UserData.label(), "per-user data");
         assert_eq!(Source::System.label(), "system");
         assert_eq!(Source::BinaryRelative.label(), "binary-relative");
+    }
+
+    #[test]
+    fn embedded_supply_chain_parses_as_yaml() {
+        let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(EMBEDDED_SUPPLY_CHAIN).unwrap();
+    }
+
+    #[test]
+    fn embedded_supply_chain_round_trips_to_config_type() {
+        let _: crate::patterns::SupplyConfig =
+            serde_yaml_ng::from_str(EMBEDDED_SUPPLY_CHAIN).unwrap();
+    }
+
+    #[test]
+    fn embedded_supply_chain_not_empty() {
+        assert!(!EMBEDDED_SUPPLY_CHAIN.is_empty());
     }
 }

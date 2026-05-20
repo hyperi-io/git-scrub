@@ -23,6 +23,7 @@ pub mod blob;
 pub mod discovery;
 pub mod files;
 pub mod lockfile;
+pub mod supply;
 pub mod versions;
 
 pub use attribution::{AttributionConfig, AttributionRewriter};
@@ -30,4 +31,5 @@ pub use blob::{BlobConfig, BlobRewriter};
 pub use discovery::{LoadedPattern, Source};
 pub use files::{FileConfig, FileMatcher, FileMatcherOptions};
 pub use lockfile::LockfileRewriter;
+pub use supply::{CompromisedPackage, PurgeTarget, SupplyConfig};
 pub use versions::Spec;
