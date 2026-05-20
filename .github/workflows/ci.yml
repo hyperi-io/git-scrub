@@ -17,6 +17,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  # E2e tests use this fixture repo. Forks can override by setting the
+  # secret/variable in their own CI; unset means tests skip honestly.
+  GIT_SCRUB_TEST_REPO: https://github.com/hyperi-io/git-scrub-test
 
 jobs:
   quality:
