@@ -160,6 +160,54 @@ source = \"registry+https://github.com/rust-lang/crates.io-index\"
     repo
 }
 
+/// Mint a temporary git repo with a `package-lock.json` (lockfileVersion 3)
+/// containing an `axios` package (bad) and an `innocent-utils` package (clean).
+///
+/// Used by tests that verify `NpmLockRewriter`.
+#[must_use]
+pub fn mint_repo_with_npm_lockfile_containing_axios() -> TempRepo {
+    let repo = TempRepo::new();
+    repo.write_file(
+        "package.json",
+        r#"{
+  "name": "fixture-npm-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "axios": "1.6.1",
+    "innocent-utils": "1.0.0"
+  }
+}
+"#,
+    );
+    repo.write_file(
+        "package-lock.json",
+        r#"{
+  "name": "fixture-npm-app",
+  "version": "1.0.0",
+  "lockfileVersion": 3,
+  "packages": {
+    "": {
+      "name": "fixture-npm-app",
+      "version": "1.0.0"
+    },
+    "node_modules/axios": {
+      "version": "1.6.1",
+      "resolved": "https://registry.npmjs.org/axios/-/axios-1.6.1.tgz",
+      "integrity": "sha512-dead..."
+    },
+    "node_modules/innocent-utils": {
+      "version": "1.0.0",
+      "resolved": "https://registry.npmjs.org/innocent-utils/-/innocent-utils-1.0.0.tgz",
+      "integrity": "sha512-alive..."
+    }
+  }
+}
+"#,
+    );
+    repo.add_all_commit("add npm lockfile with axios + innocent-utils");
+    repo
+}
+
 fn run_git(cwd: &Path, args: &[&str]) {
     let status = Command::new("git")
         .arg("-C")

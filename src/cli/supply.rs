@@ -24,7 +24,7 @@ use clap::{Args, Subcommand};
 use tracing::{info, warn};
 
 use crate::engine::{self, EngineStats, backup};
-use crate::patterns::lockfile::CargoLockRewriter;
+use crate::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter};
 use crate::patterns::supply::{CompromisedPackage, PurgeTarget, SupplyConfig};
 use crate::patterns::{LockfileRewriter, discovery};
 use crate::{gh, plan, preflight, runbook, scan, verify};
@@ -163,9 +163,14 @@ fn build_lockfile_rewriters(
         rewriters.push(Box::new(CargoLockRewriter::new(&toml_array_pkgs)?));
     }
 
-    // Other ecosystems ship in Phases 8-16. Warn so the operator knows we're
+    // npm: package-lock.json + npm-shrinkwrap.json (lockfile v1, v2, v3).
+    if let Some(npm_pkgs) = by_eco.get("npm") {
+        rewriters.push(Box::new(NpmLockRewriter::new(npm_pkgs)?));
+    }
+
+    // Other ecosystems ship in Phases 9-16. Warn so the operator knows we're
     // skipping entries for ecosystems that aren't yet implemented.
-    for eco in ["npm", "pnpm", "yarn", "bun", "pip", "go", "composer"] {
+    for eco in ["pnpm", "yarn", "bun", "pip", "go", "composer"] {
         if let Some(v) = by_eco.get(eco) {
             warn!(
                 ecosystem = eco,
