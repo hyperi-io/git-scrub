@@ -85,3 +85,42 @@ fn patterns_dump_runs_with_embedded_fallback() {
     assert!(stdout.contains("trailers"));
     assert!(stdout.contains("purge"));
 }
+
+#[test]
+fn supply_patterns_dump_runs() {
+    let out = Command::new(bin_path())
+        .args(["supply", "patterns"])
+        .output()
+        .expect("run");
+    assert!(
+        out.status.success(),
+        "git-scrub supply patterns exited non-zero: stderr={}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        stdout.contains("compromised:") || stdout.contains("lockfiles:"),
+        "expected YAML keys in dump output:\n{stdout}",
+    );
+}
+
+#[test]
+fn supply_help_runs() {
+    let out = Command::new(bin_path())
+        .args(["supply", "--help"])
+        .output()
+        .expect("run");
+    assert!(
+        out.status.success(),
+        "git-scrub supply --help exited non-zero"
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(stdout.contains("composite"), "expected 'composite' in help");
+    assert!(stdout.contains("lockfiles"), "expected 'lockfiles' in help");
+    assert!(stdout.contains("packages"), "expected 'packages' in help");
+    assert!(
+        stdout.contains("advisories"),
+        "expected 'advisories' in help"
+    );
+    assert!(stdout.contains("patterns"), "expected 'patterns' in help");
+}

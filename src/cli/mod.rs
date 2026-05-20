@@ -14,6 +14,7 @@
 
 pub mod ai;
 pub mod spill;
+pub mod supply;
 
 use std::path::PathBuf;
 
@@ -54,6 +55,8 @@ pub enum Command {
     Ai(ai::AiArgs),
     /// Spill scrub: operator-supplied path / text / secret patterns.
     Spill(spill::SpillArgs),
+    /// Supply chain scrub: strip known-bad lockfile entries from history.
+    Supply(supply::SupplyArgs),
 }
 
 /// Run the parsed CLI to completion.
@@ -67,6 +70,7 @@ pub fn run(cli: &Cli) -> anyhow::Result<()> {
     match &cli.command {
         Command::Ai(args) => ai::run(args, repo),
         Command::Spill(args) => spill::run(args, repo),
+        Command::Supply(args) => supply::run(args, repo),
     }
 }
 
