@@ -18,6 +18,18 @@ use std::path::Path;
 
 use crate::gh::GhContext;
 
+/// Summary of supply-chain transformations performed during this run.
+///
+/// Emitted in the runbook when a supply chain pass produced rewrites.
+/// v1 reports counts only; per-entry enumeration of which packages were
+/// stripped (ecosystem/name/version) is deferred to a later phase that
+/// plumbs structured data through the engine.
+#[derive(Debug, Default)]
+pub struct SupplySummary {
+    /// Number of lockfile blobs rewritten across history.
+    pub lockfile_blobs_rewritten: usize,
+}
+
 /// Inputs to runbook rendering.
 #[derive(Debug)]
 pub struct RunbookInputs<'a> {
@@ -35,6 +47,9 @@ pub struct RunbookInputs<'a> {
     /// Emit a credential-rotation section. Set by `spill secrets`; anything
     /// that leaked must be considered compromised regardless of rewrite success.
     pub spill_secrets: bool,
+    /// Supply-chain summary. Present only when a supply pass ran with `--execute`
+    /// and produced at least one rewrite. `None` for dry-run or non-supply passes.
+    pub supply: Option<SupplySummary>,
 }
 
 /// Render a runbook markdown document.
@@ -106,6 +121,36 @@ pub fn render(inputs: &RunbookInputs<'_>) -> String {
                 time and revocation.\n\
              4. **Document** the rotation in your incident record so the \
                 next on-call has the timeline."
+        );
+        let _ = writeln!(out);
+    }
+
+    if let Some(summary) = &inputs.supply
+        && summary.lockfile_blobs_rewritten > 0
+    {
+        let _ = writeln!(out, "## Supply chain summary");
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "**Lockfile blobs rewritten:** {} across history.",
+            summary.lockfile_blobs_rewritten,
+        );
+        let _ = writeln!(out);
+        let _ = writeln!(out, "To inspect per-entry detail across history:");
+        let _ = writeln!(out);
+        let _ = writeln!(out, "```bash");
+        let _ = writeln!(
+            out,
+            "git -C {} log --all -p -- Cargo.lock",
+            inputs.repo_dir.display(),
+        );
+        let _ = writeln!(out, "```");
+        let _ = writeln!(out);
+        let _ = writeln!(
+            out,
+            "Per-package enumeration of stripped entries is not yet \
+             reported in the runbook; that requires engine instrumentation \
+             planned for a later release.",
         );
         let _ = writeln!(out);
     }
@@ -396,6 +441,7 @@ mod tests {
             dry_run: false,
             gh,
             spill_secrets: false,
+            supply: None,
         }
     }
 
@@ -491,5 +537,36 @@ mod tests {
         // Just sanity-check it parses to (2026, ?, ?).
         let (y, _m, _d) = ymd_from_days(20_588);
         assert_eq!(y, 2026);
+    }
+
+    #[test]
+    fn renders_supply_summary_when_blobs_rewritten() {
+        let repo = PathBuf::from("/tmp/repo");
+        let mut inputs = make_inputs(&repo, None);
+        inputs.supply = Some(SupplySummary {
+            lockfile_blobs_rewritten: 5,
+        });
+        let out = render(&inputs);
+        assert!(out.contains("## Supply chain summary"));
+        assert!(out.contains("5 across history"));
+        assert!(out.contains("git -C /tmp/repo log"));
+    }
+
+    #[test]
+    fn omits_supply_summary_when_no_blobs_rewritten() {
+        let repo = PathBuf::from("/tmp/repo");
+        let mut inputs = make_inputs(&repo, None);
+        inputs.supply = Some(SupplySummary {
+            lockfile_blobs_rewritten: 0,
+        });
+        let out = render(&inputs);
+        assert!(!out.contains("## Supply chain summary"));
+    }
+
+    #[test]
+    fn omits_supply_summary_when_none() {
+        let repo = PathBuf::from("/tmp/repo");
+        let out = render(&make_inputs(&repo, None));
+        assert!(!out.contains("## Supply chain summary"));
     }
 }

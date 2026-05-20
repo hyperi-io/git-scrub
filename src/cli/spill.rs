@@ -293,6 +293,7 @@ fn write_runbook(
         dry_run: !common.execute,
         gh: Some(gh_ctx),
         spill_secrets: secrets_section,
+        supply: None,
     });
     let report_path = resolve_report_path(common.report.as_deref(), repo_dir)?;
     if let Some(parent) = report_path.parent() {

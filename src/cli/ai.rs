@@ -308,6 +308,7 @@ fn run_pass(repo: Option<&std::path::Path>, args: &SharedArgs, kind: PassKind) -
             dry_run: !args.execute,
             gh: Some(&gh_ctx),
             spill_secrets: false,
+            supply: None,
         });
         let report_path = resolve_report_path(args.report.as_deref(), &repo_dir)?;
         if let Some(parent) = report_path.parent() {

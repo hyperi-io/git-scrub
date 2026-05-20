@@ -285,7 +285,14 @@ fn run_pass(
         None
     };
 
-    write_runbook(args, &repo_dir, backup_path.as_deref(), &plan_md, &gh_ctx)?;
+    write_runbook(
+        args,
+        &repo_dir,
+        backup_path.as_deref(),
+        &plan_md,
+        &gh_ctx,
+        exec_stats.as_ref(),
+    )?;
     warn_if_noop(exec_stats);
     Ok(())
 }
@@ -338,10 +345,14 @@ fn write_runbook(
     backup_path: Option<&Path>,
     plan_md: &str,
     gh_ctx: &gh::GhContext,
+    exec_stats: Option<&EngineStats>,
 ) -> Result<()> {
     if !common.execute && common.report.is_none() {
         return Ok(());
     }
+    let supply_summary = exec_stats.map(|s| runbook::SupplySummary {
+        lockfile_blobs_rewritten: s.blobs_rewritten,
+    });
     let runbook_md = runbook::render(&runbook::RunbookInputs {
         repo_dir,
         backup_path,
@@ -349,6 +360,7 @@ fn write_runbook(
         dry_run: !common.execute,
         gh: Some(gh_ctx),
         spill_secrets: false,
+        supply: supply_summary,
     });
     let report_path = resolve_report_path(common.report.as_deref(), repo_dir)?;
     if let Some(parent) = report_path.parent() {
