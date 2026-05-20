@@ -10,6 +10,8 @@ use git_scrub::engine;
 use git_scrub::patterns::attribution::parse_yaml as parse_attr;
 use git_scrub::patterns::discovery::{EMBEDDED_ATTRIBUTION, EMBEDDED_FILES};
 use git_scrub::patterns::files::parse_yaml as parse_files;
+use git_scrub::patterns::lockfile::CargoLockRewriter;
+use git_scrub::patterns::supply::{CompromisedPackage, PurgeTarget};
 use git_scrub::patterns::{AttributionRewriter, FileMatcher, FileMatcherOptions, LockfileRewriter};
 use git_scrub::verify;
 
@@ -157,4 +159,41 @@ fn lockfile_rewriter_strips_axios_from_cargo_lock() {
     // Post-rewrite verify: a re-scan must find zero remaining lockfile matches.
     verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
         .expect("verify after lockfile rewrite must pass — axios should be gone");
+}
+
+#[test]
+fn real_cargo_lock_rewriter_strips_fake_malware_from_synthetic_repo() {
+    // mint_repo_with_cargo_lock_containing_axios seeds axios at version 1.0.0.
+    let bad = CompromisedPackage {
+        name: "axios".to_string(),
+        ecosystem: "cargo".to_string(),
+        versions: vec!["1.0.0".to_string()],
+        advisories: vec![],
+        purge_targets: vec![PurgeTarget::LockfileEntry],
+        notes: None,
+    };
+    let rewriter: Box<dyn LockfileRewriter> = Box::new(CargoLockRewriter::new(&[&bad]).unwrap());
+
+    let repo = mint_repo_with_cargo_lock_containing_axios();
+    let rewriters = vec![rewriter];
+    let stats =
+        engine::run(repo.path(), None, None, None, Some(rewriters.as_slice())).expect("engine run");
+    assert!(
+        stats.blobs_rewritten >= 1,
+        "expected at least one blob rewritten: {stats:?}"
+    );
+
+    let after = repo.read_file_at_head("Cargo.lock");
+    let after_str = String::from_utf8_lossy(&after);
+    assert!(
+        !after_str.contains("name = \"axios\""),
+        "axios should be gone from Cargo.lock:\n{after_str}"
+    );
+    assert!(
+        after_str.contains("name = \"innocent\""),
+        "innocent should remain in Cargo.lock:\n{after_str}"
+    );
+
+    verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
+        .expect("verify after real CargoLockRewriter must pass");
 }

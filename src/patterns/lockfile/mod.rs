@@ -1,5 +1,5 @@
 //  Project:      git-scrub
-//  File:         src/patterns/lockfile.rs
+//  File:         src/patterns/lockfile/mod.rs
 //  Purpose:      LockfileRewriter trait — path-aware blob rewriting for supply chain scrub.
 //  Language:     Rust
 //
@@ -12,6 +12,9 @@
 //! `LockfileRewriter` only fires on blobs whose committed path matches a
 //! known lockfile basename. This requires the engine to maintain a
 //! `mark -> content` cache for in-flight blobs.
+
+pub mod cargo;
+pub use cargo::CargoLockRewriter;
 
 /// A transformer that conditionally rewrites lockfile blob contents.
 pub trait LockfileRewriter: Send + Sync {

@@ -34,6 +34,5 @@ mod common;
 
 mod e2e {
     // Per-ecosystem test modules land here in Phases 4-16.
-    //
-    // Phase 4: mod supply_cargo;  (Cargo.lock supply-chain fixture)
+    pub mod supply_cargo;
 }
