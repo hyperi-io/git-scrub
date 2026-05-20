@@ -121,6 +121,16 @@ impl Default for TempRepo {
     }
 }
 
+impl TempRepo {
+    /// Wrap an already-cloned directory.  The directory is owned by the caller
+    /// via a `TempDir`; this constructor takes ownership so the directory is
+    /// deleted when the `TempRepo` is dropped.
+    #[must_use]
+    pub fn from_existing_clone(dir: TempDir) -> Self {
+        Self { dir }
+    }
+}
+
 /// Mint a temporary git repo with a `Cargo.lock` containing an `axios` package
 /// and an `innocent` package.
 ///
@@ -158,4 +168,200 @@ fn run_git(cwd: &Path, args: &[&str]) {
         .status()
         .expect("spawn git");
     assert!(status.success(), "git {args:?} failed in {cwd:?}");
+}
+
+// ── Fixture-repo helpers ──────────────────────────────────────────────────────
+
+/// Result of trying to resolve the fixture repo.
+#[derive(Debug)]
+pub enum FixtureRepoOutcome {
+    /// Successfully resolved to a local path containing a git checkout.
+    Resolved(PathBuf),
+    /// `GIT_SCRUB_TEST_REPO` env var was not set; the test should skip
+    /// honestly.
+    Skipped(&'static str),
+    /// The variable was set but resolution failed (bad URL, bad path, or clone
+    /// failure).
+    Failed(String),
+}
+
+/// Resolve the fixture repo from the `GIT_SCRUB_TEST_REPO` environment
+/// variable.
+///
+/// Three modes:
+///
+/// - **Unset** → returns [`FixtureRepoOutcome::Skipped`] with a human-readable
+///   reason; the test should print the reason and return `Ok(())`.
+/// - **URL** (`http://`, `https://`, `git@`) → shallow-clones into a
+///   per-session cache at `.tmp/fixture-cache/<slug>` and returns the path.
+///   Subsequent calls reuse the cache (refreshed via `git fetch --all
+///   --tags`).
+/// - **Path** → verifies the path exists and contains a `.git` directory, then
+///   returns it directly.
+#[must_use = "tests must respond to the FixtureRepoOutcome"]
+pub fn fixture_repo() -> FixtureRepoOutcome {
+    fixture_repo_from(std::env::var("GIT_SCRUB_TEST_REPO").ok().as_deref())
+}
+
+/// Pure inner resolver; accepts an optional env-var value so unit tests can
+/// call it without touching the process environment.
+pub fn fixture_repo_from(raw: Option<&str>) -> FixtureRepoOutcome {
+    let raw = match raw {
+        Some(v) => v,
+        None => {
+            return FixtureRepoOutcome::Skipped(
+                "GIT_SCRUB_TEST_REPO not set — set to a path or URL to enable e2e tests",
+            );
+        }
+    };
+
+    if raw.starts_with("http://") || raw.starts_with("https://") || raw.starts_with("git@") {
+        match clone_to_cache(raw) {
+            Ok(path) => FixtureRepoOutcome::Resolved(path),
+            Err(e) => FixtureRepoOutcome::Failed(format!("clone failed for {raw}: {e}")),
+        }
+    } else {
+        let p = PathBuf::from(raw);
+        if !p.join(".git").is_dir() {
+            return FixtureRepoOutcome::Failed(format!(
+                "{raw} is not a git checkout (no .git directory)"
+            ));
+        }
+        FixtureRepoOutcome::Resolved(p)
+    }
+}
+
+/// Clone a remote URL into `.tmp/fixture-cache/<slug>`, reusing the existing
+/// clone when present (refreshed via `git fetch --all --tags`).
+fn clone_to_cache(url: &str) -> anyhow::Result<PathBuf> {
+    let project_root = std::env::var("CARGO_MANIFEST_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| std::env::current_dir().expect("cwd"));
+    let cache = project_root.join(".tmp/fixture-cache");
+    std::fs::create_dir_all(&cache)?;
+
+    // Build a filesystem-safe slug from the URL characters.
+    let slug: String = url.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+    let dest = cache.join(&slug);
+
+    if dest.join(".git").is_dir() {
+        // Refresh the existing clone — best effort; ignore errors so tests
+        // can still run with a stale-but-present clone when offline.
+        let _ = Command::new("git")
+            .args([
+                "-C",
+                &dest.display().to_string(),
+                "fetch",
+                "--all",
+                "--tags",
+                "--quiet",
+            ])
+            .status();
+    } else {
+        let status = Command::new("git")
+            .args(["clone", "--quiet", "--", url, &dest.display().to_string()])
+            .status()?;
+        anyhow::ensure!(status.success(), "git clone failed for {url}");
+    }
+    Ok(dest)
+}
+
+/// Snapshot the fixture into a fresh `TempDir` and check out a specific tag.
+///
+/// Uses `git clone --local --no-hardlinks` so the snapshot is fully
+/// independent; the original fixture repo is never mutated by a test.
+///
+/// # Errors
+///
+/// Returns an error if the local clone or the tag checkout fails.
+pub fn snapshot_fixture(src: &Path, tag: &str) -> anyhow::Result<TempRepo> {
+    let dir = tempfile::tempdir()?;
+    let dest = dir.path().to_path_buf();
+
+    let status = Command::new("git")
+        .args([
+            "clone",
+            "--local",
+            "--no-hardlinks",
+            "--quiet",
+            "--",
+            &src.display().to_string(),
+            &dest.display().to_string(),
+        ])
+        .status()?;
+    anyhow::ensure!(status.success(), "git clone --local failed");
+
+    let status = Command::new("git")
+        .args([
+            "-C",
+            &dest.display().to_string(),
+            "checkout",
+            "--detach",
+            "--quiet",
+            tag,
+        ])
+        .status()?;
+    anyhow::ensure!(status.success(), "checkout fixture tag {tag} failed");
+
+    Ok(TempRepo::from_existing_clone(dir))
+}
+
+// ── Tests for fixture helpers ─────────────────────────────────────────────────
+
+#[cfg(test)]
+mod fixture_tests {
+    use super::*;
+
+    #[test]
+    fn fixture_repo_skips_when_env_unset() {
+        // Test the pure resolver directly — no env mutation required.
+        match fixture_repo_from(None) {
+            FixtureRepoOutcome::Skipped(_) => {}
+            other => panic!("expected Skipped, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fixture_repo_skipped_message_is_helpful() {
+        if let FixtureRepoOutcome::Skipped(reason) = fixture_repo_from(None) {
+            assert!(
+                reason.contains("GIT_SCRUB_TEST_REPO"),
+                "skip reason should name the env var: {reason}"
+            );
+        }
+    }
+
+    #[test]
+    fn fixture_repo_failed_for_invalid_path() {
+        match fixture_repo_from(Some("/definitely/not/a/repo")) {
+            FixtureRepoOutcome::Failed(msg) => {
+                assert!(
+                    msg.contains("not a git checkout"),
+                    "unexpected failure message: {msg}"
+                );
+            }
+            other => panic!("expected Failed, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn fixture_repo_resolves_valid_local_path() {
+        // Use the tmp fixture clone if it's been seeded by Phase 3b; skip if
+        // not present (developer machine without the fixture repo).
+        let candidate =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(".tmp/git-scrub-test");
+        if !candidate.join(".git").is_dir() {
+            eprintln!(
+                "SKIP: .tmp/git-scrub-test not present — \
+                 seed with Phase 3b before running this assertion"
+            );
+            return;
+        }
+        match fixture_repo_from(Some(candidate.to_str().unwrap())) {
+            FixtureRepoOutcome::Resolved(p) => {
+                assert_eq!(p, candidate);
+            }
+            other => panic!("expected Resolved, got {other:?}"),
+        }
+    }
 }
