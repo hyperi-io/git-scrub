@@ -13,7 +13,7 @@ use git_scrub::patterns::files::parse_yaml as parse_files;
 use git_scrub::patterns::lockfile::CargoLockRewriter;
 use git_scrub::patterns::supply::{CompromisedPackage, PurgeTarget};
 use git_scrub::patterns::{AttributionRewriter, FileMatcher, FileMatcherOptions, LockfileRewriter};
-use git_scrub::verify;
+use git_scrub::verify::{self, VerifyError};
 
 use crate::common::{TempRepo, mint_repo_with_cargo_lock_containing_axios};
 
@@ -196,4 +196,46 @@ fn real_cargo_lock_rewriter_strips_fake_malware_from_synthetic_repo() {
 
     verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
         .expect("verify after real CargoLockRewriter must pass");
+}
+
+#[test]
+fn verify_fails_when_lockfile_pattern_survives_rewrite() {
+    // Regression test: verify must FAIL when content wasn't actually rewritten.
+    // This test proves verify is doing its job as a safety net.
+    //
+    // Setup: mint a repo with axios at version 1.0.0 (from the fixture).
+    // We do NOT run engine::run to rewrite it.
+    // Then call verify::run with a CargoLockRewriter that WOULD match axios.
+    // Expected: verify fails with VerifyError::StillMatching, because
+    // the un-rewritten repo still contains the axios package.
+
+    let bad = CompromisedPackage {
+        name: "axios".to_string(),
+        ecosystem: "cargo".to_string(),
+        versions: vec!["1.0.0".to_string()],
+        advisories: vec![],
+        purge_targets: vec![PurgeTarget::LockfileEntry],
+        notes: None,
+    };
+
+    let repo = mint_repo_with_cargo_lock_containing_axios();
+    let rewriters: Vec<Box<dyn LockfileRewriter>> =
+        vec![Box::new(CargoLockRewriter::new(&[&bad]).unwrap())];
+
+    // Call verify WITHOUT calling engine::run first.
+    // The axios entry is still in the repo, so verify should fail.
+    let result = verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()));
+
+    match result {
+        Err(VerifyError::StillMatching { blobs, .. }) => {
+            assert!(
+                blobs >= 1,
+                "expected at least one blob hit for surviving axios, got {blobs}"
+            );
+        }
+        Err(other) => panic!("expected StillMatching, got {other:?}"),
+        Ok(stats) => panic!(
+            "verify passed unexpectedly — should have caught the surviving axios pattern: {stats:?}"
+        ),
+    }
 }
