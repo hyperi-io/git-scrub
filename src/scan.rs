@@ -35,8 +35,7 @@ pub fn scan(
         .take()
         .ok_or_else(|| EngineError::Export(io::Error::other("fast-export stdout missing")))?;
 
-    let stats =
-        transform::run_stream(stdout, io::sink(), attribution, files, blob, lockfiles)?;
+    let stats = transform::run_stream(stdout, io::sink(), attribution, files, blob, lockfiles)?;
 
     let exit = child.wait().map_err(EngineError::Export)?;
     if !exit.success() {
