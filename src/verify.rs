@@ -17,7 +17,7 @@ use std::path::Path;
 use thiserror::Error;
 
 use crate::engine::{EngineError, EngineStats};
-use crate::patterns::{AttributionRewriter, BlobRewriter, FileMatcher};
+use crate::patterns::{AttributionRewriter, BlobRewriter, FileMatcher, LockfileRewriter};
 use crate::scan;
 
 /// Errors raised by post-rewrite verification.
@@ -48,8 +48,9 @@ pub fn run(
     attribution: Option<&AttributionRewriter>,
     files: Option<&FileMatcher>,
     blob: Option<&BlobRewriter>,
+    lockfiles: Option<&[Box<dyn LockfileRewriter>]>,
 ) -> Result<EngineStats, VerifyError> {
-    let stats = scan::scan(repo_dir, attribution, files, blob)?;
+    let stats = scan::scan(repo_dir, attribution, files, blob, lockfiles)?;
     if stats.commits_rewritten > 0 || stats.file_ops_dropped > 0 || stats.blobs_rewritten > 0 {
         return Err(VerifyError::StillMatching {
             commits: stats.commits_rewritten,

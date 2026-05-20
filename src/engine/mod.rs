@@ -33,7 +33,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::info;
 
-use crate::patterns::{AttributionRewriter, BlobRewriter, FileMatcher};
+use crate::patterns::{AttributionRewriter, BlobRewriter, FileMatcher, LockfileRewriter};
 
 /// Errors raised by the engine pipeline.
 #[derive(Debug, Error)]
@@ -78,18 +78,20 @@ pub struct EngineStats {
 /// Run the full pipeline against a git repository.
 ///
 /// `repo_dir` is the working tree root. Every pattern source is optional;
-/// passing `None` for all three is a no-op that returns early without
+/// passing `None` for all four is a no-op that returns early without
 /// invoking `git`.
 pub fn run(
     repo_dir: &Path,
     attribution: Option<&AttributionRewriter>,
     files: Option<&FileMatcher>,
     blob: Option<&BlobRewriter>,
+    lockfiles: Option<&[Box<dyn LockfileRewriter>]>,
 ) -> Result<EngineStats, EngineError> {
     let want_attribution = attribution.is_some_and(|a| !a.is_empty());
     let want_files = files.is_some_and(|f| !f.is_empty());
     let want_blob = blob.is_some_and(|b| !b.is_empty());
-    if !want_attribution && !want_files && !want_blob {
+    let want_lockfiles = lockfiles.is_some_and(|lfs| !lfs.is_empty());
+    if !want_attribution && !want_files && !want_blob && !want_lockfiles {
         info!("engine: nothing to rewrite (empty pattern sets)");
         return Ok(EngineStats::default());
     }
@@ -109,7 +111,14 @@ pub fn run(
         .take()
         .ok_or_else(|| EngineError::Import(std::io::Error::other("fast-import stdin missing")))?;
 
-    let stats = transform::run_stream(export_stdout, import_stdin, attribution, files, blob)?;
+    let stats = transform::run_stream(
+        export_stdout,
+        import_stdin,
+        attribution,
+        files,
+        blob,
+        lockfiles,
+    )?;
 
     let export_status = export_child.wait().map_err(EngineError::Export)?;
     let import_status = import_child.wait().map_err(EngineError::Import)?;

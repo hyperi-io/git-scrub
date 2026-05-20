@@ -25,7 +25,7 @@ fn scan_reports_claude_attribution() {
     let cfg = parse_attr(EMBEDDED_ATTRIBUTION).expect("parse attribution");
     let rewriter = AttributionRewriter::new(&cfg, &[]).expect("build rewriter");
 
-    let stats = scan::scan(repo.path(), Some(&rewriter), None, None).expect("scan");
+    let stats = scan::scan(repo.path(), Some(&rewriter), None, None, None).expect("scan");
     assert_eq!(stats.commits_seen, 1);
     assert_eq!(stats.commits_rewritten, 1);
     assert_eq!(stats.file_ops_dropped, 0);
@@ -48,7 +48,7 @@ fn execute_strips_claude_trailer_from_history() {
     let cfg = parse_attr(EMBEDDED_ATTRIBUTION).expect("parse attribution");
     let rewriter = AttributionRewriter::new(&cfg, &[]).expect("build rewriter");
 
-    let stats = engine::run(repo.path(), Some(&rewriter), None, None).expect("engine run");
+    let stats = engine::run(repo.path(), Some(&rewriter), None, None, None).expect("engine run");
     assert_eq!(stats.commits_rewritten, 1);
 
     let after = repo.log_messages();
@@ -73,7 +73,7 @@ fn preserves_human_coauthor_lines() {
 
     let cfg = parse_attr(EMBEDDED_ATTRIBUTION).expect("parse attribution");
     let rewriter = AttributionRewriter::new(&cfg, &[]).expect("build rewriter");
-    engine::run(repo.path(), Some(&rewriter), None, None).expect("engine run");
+    engine::run(repo.path(), Some(&rewriter), None, None, None).expect("engine run");
 
     let after = repo.log_messages();
     assert!(

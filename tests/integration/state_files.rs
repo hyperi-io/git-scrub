@@ -23,7 +23,7 @@ fn state_file_family_survives_by_default() {
 
     let cfg = parse_files(EMBEDDED_FILES).expect("parse files");
     let matcher = FileMatcher::new(&cfg, &FileMatcherOptions::default()).expect("build matcher");
-    let stats = scan::scan(repo.path(), None, Some(&matcher), None).expect("scan");
+    let stats = scan::scan(repo.path(), None, Some(&matcher), None, None).expect("scan");
 
     // Only the .claude/output.md inside .claude/ should be dropped — CLAUDE.md
     // (state file at the root) should survive.
@@ -44,6 +44,6 @@ fn force_include_overrides_state_file_protection() {
     };
     let matcher = FileMatcher::new(&cfg, &opts).expect("build matcher");
 
-    let stats = scan::scan(repo.path(), None, Some(&matcher), None).expect("scan");
+    let stats = scan::scan(repo.path(), None, Some(&matcher), None, None).expect("scan");
     assert_eq!(stats.file_ops_dropped, 1);
 }

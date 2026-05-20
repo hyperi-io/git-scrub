@@ -140,7 +140,8 @@ fn run_paths(repo: Option<&Path>, args: &PathsArgs) -> Result<()> {
         return Err(anyhow!("no path patterns supplied"));
     }
 
-    let scan_stats = scan::scan(&repo_dir, None, Some(&matcher), None).context("dry-run scan")?;
+    let scan_stats =
+        scan::scan(&repo_dir, None, Some(&matcher), None, None).context("dry-run scan")?;
     let plan_md = plan::render(&plan::PlanInputs {
         use_case: "spill paths",
         attribution_source: None,
@@ -157,10 +158,11 @@ fn run_paths(repo: Option<&Path>, args: &PathsArgs) -> Result<()> {
     let backup_path = take_backup_if_requested(&args.common, &repo_dir)?;
 
     let exec_stats = if args.common.execute {
-        let stats = engine::run(&repo_dir, None, Some(&matcher), None).context("rewrite engine")?;
+        let stats =
+            engine::run(&repo_dir, None, Some(&matcher), None, None).context("rewrite engine")?;
         info!(?stats, "rewrite complete");
         let verify_stats =
-            verify::run(&repo_dir, None, Some(&matcher), None).context("verification")?;
+            verify::run(&repo_dir, None, Some(&matcher), None, None).context("verification")?;
         info!(?verify_stats, "verification passed");
         Some(stats)
     } else {
@@ -193,7 +195,8 @@ fn run_blob(repo: Option<&Path>, args: &TextArgs, kind: BlobKind) -> Result<()> 
         return Err(anyhow!("pattern file declares no replacements"));
     }
 
-    let scan_stats = scan::scan(&repo_dir, None, None, Some(&rewriter)).context("dry-run scan")?;
+    let scan_stats =
+        scan::scan(&repo_dir, None, None, Some(&rewriter), None).context("dry-run scan")?;
     let plan_md = plan::render(&plan::PlanInputs {
         use_case: kind.label(),
         attribution_source: None,
@@ -211,10 +214,10 @@ fn run_blob(repo: Option<&Path>, args: &TextArgs, kind: BlobKind) -> Result<()> 
 
     let exec_stats = if args.common.execute {
         let stats =
-            engine::run(&repo_dir, None, None, Some(&rewriter)).context("rewrite engine")?;
+            engine::run(&repo_dir, None, None, Some(&rewriter), None).context("rewrite engine")?;
         info!(?stats, "rewrite complete");
         let verify_stats =
-            verify::run(&repo_dir, None, None, Some(&rewriter)).context("verification")?;
+            verify::run(&repo_dir, None, None, Some(&rewriter), None).context("verification")?;
         info!(?verify_stats, "verification passed");
         Some(stats)
     } else {

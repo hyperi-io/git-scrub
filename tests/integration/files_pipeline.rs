@@ -24,7 +24,7 @@ fn scan_reports_claude_artefact_directory() {
     let cfg = parse_files(EMBEDDED_FILES).expect("parse files");
     let matcher = FileMatcher::new(&cfg, &FileMatcherOptions::default()).expect("build matcher");
 
-    let stats = scan::scan(repo.path(), None, Some(&matcher), None).expect("scan");
+    let stats = scan::scan(repo.path(), None, Some(&matcher), None, None).expect("scan");
     assert_eq!(stats.commits_seen, 1);
     assert_eq!(
         stats.file_ops_dropped, 1,
@@ -46,7 +46,7 @@ fn execute_drops_claude_directory_from_history() {
     let cfg = parse_files(EMBEDDED_FILES).expect("parse files");
     let matcher = FileMatcher::new(&cfg, &FileMatcherOptions::default()).expect("build matcher");
 
-    let stats = engine::run(repo.path(), None, Some(&matcher), None).expect("engine run");
+    let stats = engine::run(repo.path(), None, Some(&matcher), None, None).expect("engine run");
     assert_eq!(stats.file_ops_dropped, 2);
 
     let after = repo.log_raw();
@@ -74,6 +74,6 @@ fn include_extra_adds_to_purge_set() {
     };
     let matcher = FileMatcher::new(&cfg, &opts).expect("build matcher");
 
-    let stats = scan::scan(repo.path(), None, Some(&matcher), None).expect("scan");
+    let stats = scan::scan(repo.path(), None, Some(&matcher), None, None).expect("scan");
     assert_eq!(stats.file_ops_dropped, 1);
 }

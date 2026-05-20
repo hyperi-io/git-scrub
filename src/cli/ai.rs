@@ -225,6 +225,7 @@ fn run_pass(repo: Option<&std::path::Path>, args: &SharedArgs, kind: PassKind) -
         attribution_rewriter.as_ref(),
         file_matcher.as_ref(),
         None,
+        None,
     )
     .context("dry-run scan")?;
 
@@ -280,6 +281,7 @@ fn run_pass(repo: Option<&std::path::Path>, args: &SharedArgs, kind: PassKind) -
             attribution_rewriter.as_ref(),
             file_matcher.as_ref(),
             None,
+            None,
         )
         .context("rewrite engine run")?;
         info!(?stats, "rewrite complete");
@@ -288,6 +290,7 @@ fn run_pass(repo: Option<&std::path::Path>, args: &SharedArgs, kind: PassKind) -
             &repo_dir,
             attribution_rewriter.as_ref(),
             file_matcher.as_ref(),
+            None,
             None,
         )
         .context("post-rewrite verification")?;

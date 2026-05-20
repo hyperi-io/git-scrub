@@ -92,6 +92,27 @@ impl TempRepo {
             .expect("git log --raw");
         String::from_utf8_lossy(&out.stdout).into_owned()
     }
+
+    /// Read the contents of `rel_path` from HEAD using `git show HEAD:<path>`.
+    ///
+    /// Returns the raw bytes of the file as it exists in the HEAD commit.
+    #[must_use]
+    pub fn read_file_at_head(&self, rel_path: &str) -> Vec<u8> {
+        let tree_path = format!("HEAD:{rel_path}");
+        let out = Command::new("git")
+            .arg("-C")
+            .arg(self.path())
+            .arg("show")
+            .arg(&tree_path)
+            .output()
+            .expect("git show");
+        assert!(
+            out.status.success(),
+            "git show {tree_path} failed: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        out.stdout
+    }
 }
 
 impl Default for TempRepo {
