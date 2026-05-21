@@ -415,6 +415,27 @@ pub fn mint_repo_with_pipfile_lock_containing_axios() -> TempRepo {
     repo
 }
 
+/// Mint a temporary git repo with a `go.sum` containing a bad module
+/// (`github.com/axios/axios` at v1.6.1) and an innocent module.
+///
+/// Each module has two lines in go.sum: one for the module zip hash
+/// and one for the go.mod hash. The rewriter must drop both.
+///
+/// Used by tests that verify `GoSumRewriter`.
+#[must_use]
+pub fn mint_repo_with_go_sum_containing_axios() -> TempRepo {
+    let repo = TempRepo::new();
+    repo.write_file(
+        "go.sum",
+        "github.com/axios/axios v1.6.1 h1:axioshash==\n\
+         github.com/axios/axios v1.6.1/go.mod h1:axiosgomodhash==\n\
+         github.com/innocent-utils/utils v1.0.0 h1:innocenthash==\n\
+         github.com/innocent-utils/utils v1.0.0/go.mod h1:innocentgomodhash==\n",
+    );
+    repo.add_all_commit("add go.sum with axios + innocent-utils");
+    repo
+}
+
 fn run_git(cwd: &Path, args: &[&str]) {
     let status = Command::new("git")
         .arg("-C")

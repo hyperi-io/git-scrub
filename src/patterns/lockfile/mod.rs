@@ -19,6 +19,9 @@ pub use bun::BunLockRewriter;
 pub mod cargo;
 pub use cargo::CargoLockRewriter;
 
+pub mod go;
+pub use go::GoSumRewriter;
+
 pub mod npm;
 pub use npm::NpmLockRewriter;
 

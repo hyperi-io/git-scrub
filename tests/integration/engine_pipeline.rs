@@ -11,8 +11,8 @@ use git_scrub::patterns::attribution::parse_yaml as parse_attr;
 use git_scrub::patterns::discovery::{EMBEDDED_ATTRIBUTION, EMBEDDED_FILES};
 use git_scrub::patterns::files::parse_yaml as parse_files;
 use git_scrub::patterns::lockfile::{
-    BunLockRewriter, CargoLockRewriter, NpmLockRewriter, PipLockRewriter, PnpmLockRewriter,
-    YarnLockRewriter,
+    BunLockRewriter, CargoLockRewriter, GoSumRewriter, NpmLockRewriter, PipLockRewriter,
+    PnpmLockRewriter, YarnLockRewriter,
 };
 use git_scrub::patterns::supply::{CompromisedPackage, PurgeTarget};
 use git_scrub::patterns::{AttributionRewriter, FileMatcher, FileMatcherOptions, LockfileRewriter};
@@ -20,10 +20,10 @@ use git_scrub::verify::{self, VerifyError};
 
 use crate::common::{
     TempRepo, mint_repo_with_bun_lockfile_containing_axios,
-    mint_repo_with_cargo_lock_containing_axios, mint_repo_with_npm_lockfile_containing_axios,
-    mint_repo_with_pipfile_lock_containing_axios, mint_repo_with_pnpm_lockfile_containing_axios,
-    mint_repo_with_poetry_lock_containing_axios, mint_repo_with_uv_lock_containing_axios,
-    mint_repo_with_yarn_lockfile_containing_axios,
+    mint_repo_with_cargo_lock_containing_axios, mint_repo_with_go_sum_containing_axios,
+    mint_repo_with_npm_lockfile_containing_axios, mint_repo_with_pipfile_lock_containing_axios,
+    mint_repo_with_pnpm_lockfile_containing_axios, mint_repo_with_poetry_lock_containing_axios,
+    mint_repo_with_uv_lock_containing_axios, mint_repo_with_yarn_lockfile_containing_axios,
 };
 
 #[test]
@@ -511,4 +511,40 @@ fn pip_lock_rewriter_strips_axios_from_synthetic_repo() {
 
     verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
         .expect("verify after PipLockRewriter must pass — axios should be gone");
+}
+
+#[test]
+fn go_sum_rewriter_strips_axios_from_synthetic_repo() {
+    let bad = CompromisedPackage {
+        name: "github.com/axios/axios".to_string(),
+        ecosystem: "go".to_string(),
+        versions: vec!["1.6.1".to_string()],
+        advisories: vec![],
+        purge_targets: vec![PurgeTarget::LockfileEntry],
+        notes: None,
+    };
+    let rewriter: Box<dyn LockfileRewriter> = Box::new(GoSumRewriter::new(&[&bad]).unwrap());
+
+    let repo = mint_repo_with_go_sum_containing_axios();
+    let rewriters = vec![rewriter];
+    let stats =
+        engine::run(repo.path(), None, None, None, Some(rewriters.as_slice())).expect("engine run");
+    assert!(
+        stats.blobs_rewritten >= 1,
+        "expected at least one go.sum blob rewritten: {stats:?}"
+    );
+
+    let after = repo.read_file_at_head("go.sum");
+    let after_str = String::from_utf8_lossy(&after);
+    assert!(
+        !after_str.contains("github.com/axios/axios"),
+        "axios should be gone from go.sum:\n{after_str}"
+    );
+    assert!(
+        after_str.contains("github.com/innocent-utils/utils"),
+        "innocent-utils should remain in go.sum:\n{after_str}"
+    );
+
+    verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
+        .expect("verify after GoSumRewriter must pass — axios should be gone");
 }
