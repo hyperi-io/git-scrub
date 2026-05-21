@@ -24,7 +24,9 @@ use clap::{Args, Subcommand};
 use tracing::{info, warn};
 
 use crate::engine::{self, EngineStats, backup};
-use crate::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter, YarnLockRewriter};
+use crate::patterns::lockfile::{
+    CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter, YarnLockRewriter,
+};
 use crate::patterns::supply::{CompromisedPackage, PurgeTarget, SupplyConfig};
 use crate::patterns::{LockfileRewriter, discovery};
 use crate::{gh, plan, preflight, runbook, scan, verify};

@@ -10,7 +10,9 @@ use git_scrub::engine;
 use git_scrub::patterns::attribution::parse_yaml as parse_attr;
 use git_scrub::patterns::discovery::{EMBEDDED_ATTRIBUTION, EMBEDDED_FILES};
 use git_scrub::patterns::files::parse_yaml as parse_files;
-use git_scrub::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter, YarnLockRewriter};
+use git_scrub::patterns::lockfile::{
+    CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter, YarnLockRewriter,
+};
 use git_scrub::patterns::supply::{CompromisedPackage, PurgeTarget};
 use git_scrub::patterns::{AttributionRewriter, FileMatcher, FileMatcherOptions, LockfileRewriter};
 use git_scrub::verify::{self, VerifyError};

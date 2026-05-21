@@ -306,7 +306,10 @@ mod tests {
             "axios body should be gone\n{s}"
         );
         // innocent + scoped preserved
-        assert!(s.contains("innocent-utils"), "innocent-utils should remain\n{s}");
+        assert!(
+            s.contains("innocent-utils"),
+            "innocent-utils should remain\n{s}"
+        );
         assert!(s.contains("@types/node"), "@types/node should remain\n{s}");
         // Comments preserved
         assert!(
@@ -326,8 +329,7 @@ mod tests {
     fn returns_none_for_yarn_berry() {
         let bad = pkg("axios", "1.6.1");
         let r = YarnLockRewriter::new(&[&bad]).unwrap();
-        let berry =
-            b"__metadata:\n  version: 8\n\n\"axios@npm:^1.6.0\":\n  version: 1.6.1\n";
+        let berry = b"__metadata:\n  version: 8\n\n\"axios@npm:^1.6.0\":\n  version: 1.6.1\n";
         assert!(
             r.strip(berry).is_none(),
             "Berry format must be left alone in v1"
