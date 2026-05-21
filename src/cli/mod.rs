@@ -14,6 +14,7 @@
 
 pub mod ai;
 pub mod clean;
+pub mod curate;
 pub mod spill;
 pub mod supply;
 

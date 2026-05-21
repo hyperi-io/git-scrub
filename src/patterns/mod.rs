@@ -20,6 +20,7 @@
 
 pub mod attribution;
 pub mod blob;
+pub mod curate;
 pub mod discovery;
 pub mod files;
 pub mod lockfile;
@@ -28,6 +29,7 @@ pub mod versions;
 
 pub use attribution::{AttributionConfig, AttributionRewriter};
 pub use blob::{BlobConfig, BlobRewriter};
+pub use curate::CurateConfig;
 pub use discovery::{LoadedPattern, Source};
 pub use files::{FileConfig, FileMatcher, FileMatcherOptions};
 pub use lockfile::LockfileRewriter;

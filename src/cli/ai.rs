@@ -1,6 +1,6 @@
 //  Project:      git-scrub
 //  File:         src/cli/ai.rs
-//  Purpose:      `ai` use-case command implementation (attribution + files + composite).
+//  Purpose:      `ai` use-case command implementation (attribution + files + composite + curate).
 //  Language:     Rust
 //
 //  License:      Apache-2.0
@@ -15,6 +15,7 @@ use anyhow::{Context, Result, anyhow};
 use clap::{Args, Subcommand};
 use tracing::{info, warn};
 
+use crate::cli::curate;
 use crate::engine::{self, EngineStats, backup};
 use crate::patterns::{
     AttributionRewriter, FileMatcher, FileMatcherOptions, attribution, discovery, files,
@@ -40,6 +41,8 @@ pub enum AiMode {
     Files(SharedArgs),
     /// Dump the active pattern library (read-only, no rewrite).
     Patterns(PatternsArgs),
+    /// Working-tree curation — add gitignore entries, policy files, scrub stray refs.
+    Curate(curate::CurateArgs),
 }
 
 /// Args shared by `attribution`, `files`, and `composite`.
@@ -110,6 +113,7 @@ pub fn run(args: &AiArgs, repo: Option<&std::path::Path>) -> Result<()> {
         AiMode::Attribution(s) => run_pass(repo, s, PassKind::Attribution),
         AiMode::Files(s) => run_pass(repo, s, PassKind::Files),
         AiMode::Composite(s) => run_pass(repo, s, PassKind::Composite),
+        AiMode::Curate(c) => curate::run(c, repo),
     }
 }
 

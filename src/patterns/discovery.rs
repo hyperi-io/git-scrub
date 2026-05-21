@@ -34,12 +34,23 @@ pub const EMBEDDED_FILES: &str = include_str!("../../config/patterns/ai-files.ya
 /// Embedded supply chain advisory snapshot — compile-time fallback.
 pub const EMBEDDED_SUPPLY_CHAIN: &str = include_str!("../../config/patterns/supply-chain.yaml");
 
+/// Embedded fallback for `ai-curate.yaml` (compile-time).
+pub const EMBEDDED_AI_CURATE: &str = include_str!("../../config/patterns/ai-curate.yaml");
+
+/// Embedded canonical `AI-TRAINING-POLICY.md` content.
+pub const EMBEDDED_AI_TRAINING_POLICY: &str = include_str!("../../AI-TRAINING-POLICY.md");
+
+/// Embedded canonical `robots.txt` content.
+pub const EMBEDDED_ROBOTS_TXT: &str = include_str!("../../robots.txt");
+
 /// Pattern-file names recognised at runtime.
 pub const ATTRIBUTION_FILE: &str = "ai-attribution.yaml";
 /// Pattern-file names recognised at runtime.
 pub const FILES_FILE: &str = "ai-files.yaml";
 /// Discovery filename for the supply chain pattern file.
 pub const SUPPLY_CHAIN_FILE: &str = "supply-chain.yaml";
+/// Discovery filename for the curate pattern file.
+pub const AI_CURATE_FILE: &str = "ai-curate.yaml";
 
 /// Errors raised by pattern-file discovery.
 #[derive(Debug, Error)]
@@ -273,5 +284,26 @@ mod tests {
     #[test]
     fn embedded_supply_chain_not_empty() {
         assert!(!EMBEDDED_SUPPLY_CHAIN.is_empty());
+    }
+
+    #[test]
+    fn embedded_ai_curate_parses_as_yaml() {
+        let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(EMBEDDED_AI_CURATE).unwrap();
+    }
+
+    #[test]
+    fn embedded_ai_curate_round_trips_to_curate_config() {
+        let _: crate::patterns::CurateConfig = serde_yaml_ng::from_str(EMBEDDED_AI_CURATE).unwrap();
+    }
+
+    #[test]
+    fn embedded_ai_curate_not_empty() {
+        assert!(!EMBEDDED_AI_CURATE.is_empty());
+    }
+
+    #[test]
+    fn embedded_policy_files_not_empty() {
+        assert!(!EMBEDDED_AI_TRAINING_POLICY.is_empty());
+        assert!(!EMBEDDED_ROBOTS_TXT.is_empty());
     }
 }

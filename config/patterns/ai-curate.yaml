@@ -1,0 +1,44 @@
+# config/patterns/ai-curate.yaml
+#
+# Working-tree curation rules for `git-scrub ai curate`.
+#
+# Paths to add to .gitignore (deduplicated against existing entries).
+gitignore_additions:
+  ai_tool_dirs:
+    - ".claude/"
+    - ".cursor/"
+    - ".codex/"
+    - ".aider*"
+    - ".continue/"
+    - ".windsurf/"
+    - "hyperi-ai/"
+    - ".mcp.json"
+    - ".ai-version"
+  state_files:
+    - "STATE.md"
+    - "CLAUDE.md"
+    - "GEMINI.md"
+    - "AGENTS.md"
+    - "CURSOR.md"
+    - "CODEX.md"
+    - "TODO.md"
+  local_scratch:
+    - "docs/superpowers/"
+
+# Canonical policy files that should exist in the repo root.
+# Source: hyperi-io/licensing (override via --policy-source).
+policy_files:
+  - "AI-TRAINING-POLICY.md"
+  - "robots.txt"
+
+# Stray references: tool-specific names that often appear in comments
+# but should be made generic. Match anchored to specific high-confidence
+# patterns; refusing to scan blindly across all text.
+reference_scrub:
+  patterns:
+    - find: "# Claude Code scratch"
+      replace: "# Local scratch"
+    - find: "# Cursor AI scratch"
+      replace: "# Local scratch"
+    - find: "# Codex AI scratch"
+      replace: "# Local scratch"

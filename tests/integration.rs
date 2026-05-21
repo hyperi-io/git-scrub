@@ -14,6 +14,7 @@
 mod common;
 
 mod integration {
+    pub mod ai_curate;
     pub mod attribution_pipeline;
     pub mod engine_pipeline;
     pub mod files_pipeline;
