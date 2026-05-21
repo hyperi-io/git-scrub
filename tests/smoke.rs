@@ -124,3 +124,47 @@ fn supply_help_runs() {
     );
     assert!(stdout.contains("patterns"), "expected 'patterns' in help");
 }
+
+#[test]
+fn clean_help_runs() {
+    let out = Command::new(bin_path())
+        .args(["clean", "--help"])
+        .output()
+        .expect("run");
+    assert!(
+        out.status.success(),
+        "git-scrub clean --help exited non-zero: {:?}",
+        out.status
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(stdout.contains("--ai"), "expected '--ai' in help output");
+    assert!(
+        stdout.contains("--spill-paths"),
+        "expected '--spill-paths' in help output"
+    );
+    assert!(
+        stdout.contains("--supply"),
+        "expected '--supply' in help output"
+    );
+}
+
+#[test]
+fn clean_with_no_targets_errors() {
+    // No --ai, --spill-paths, or --supply supplied → must exit non-zero
+    // with a helpful error message.
+    let out = Command::new(bin_path())
+        .args(["clean"])
+        .output()
+        .expect("run");
+    assert!(
+        !out.status.success(),
+        "expected non-zero exit when no transformers activated"
+    );
+    let stderr = String::from_utf8(out.stderr).unwrap();
+    assert!(
+        stderr.contains("no transformers")
+            || stderr.contains("--ai")
+            || stderr.contains("--supply"),
+        "expected helpful error message, got: {stderr}",
+    );
+}

@@ -44,4 +44,6 @@ mod e2e {
     pub mod supply_poetry;
     pub mod supply_uv;
     pub mod supply_yarn;
+    // Phase 17: clean umbrella subcommand.
+    pub mod clean_combined;
 }

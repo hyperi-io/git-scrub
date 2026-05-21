@@ -13,6 +13,7 @@
 //! (git's `git-<name>` convention).
 
 pub mod ai;
+pub mod clean;
 pub mod spill;
 pub mod supply;
 
@@ -57,6 +58,8 @@ pub enum Command {
     Spill(spill::SpillArgs),
     /// Supply chain scrub: strip known-bad lockfile entries from history.
     Supply(supply::SupplyArgs),
+    /// Umbrella: single-pass composition of ai + spill-paths + supply.
+    Clean(clean::CleanArgs),
 }
 
 /// Run the parsed CLI to completion.
@@ -71,6 +74,7 @@ pub fn run(cli: &Cli) -> anyhow::Result<()> {
         Command::Ai(args) => ai::run(args, repo),
         Command::Spill(args) => spill::run(args, repo),
         Command::Supply(args) => supply::run(args, repo),
+        Command::Clean(args) => clean::run(args, repo),
     }
 }
 
