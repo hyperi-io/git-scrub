@@ -27,13 +27,26 @@ test-results/
 # scratch, not part of the project's source of truth.
 docs/superpowers/
 
-# Editor-specific AI tool state (developer-local, never committed).
+# Local working files (never committed).
 .claude/
 .cursor/
 .codex/
 .aider*
 .continue/
 .windsurf/
+hyperi-ai/
+.mcp.json
+.ai-version
+
+# Local project state files — kept on disk for the developer's tools but
+# never committed.
+STATE.md
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+CURSOR.md
+CODEX.md
+TODO.md
 
 # Local scrub backups + runbooks (created at runtime under user cache —
 # shouldn't appear here, but guard against accidental in-tree creation).
@@ -43,5 +56,5 @@ scrub-runbooks/
 # Test fixtures that mint temp git repos
 /tests/**/.tmp/
 
-# Claude Code scratch workspace
+# Local scratch workspace.
 .tmp/
