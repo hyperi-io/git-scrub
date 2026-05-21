@@ -25,8 +25,8 @@ use tracing::{info, warn};
 
 use crate::engine::{self, EngineStats, backup};
 use crate::patterns::lockfile::{
-    BunLockRewriter, CargoLockRewriter, GoSumRewriter, NpmLockRewriter, PipLockRewriter,
-    PnpmLockRewriter, YarnLockRewriter,
+    BunLockRewriter, CargoLockRewriter, ComposerLockRewriter, GoSumRewriter, NpmLockRewriter,
+    PipLockRewriter, PnpmLockRewriter, YarnLockRewriter,
 };
 use crate::patterns::supply::{CompromisedPackage, PurgeTarget, SupplyConfig};
 use crate::patterns::{LockfileRewriter, discovery};
@@ -196,16 +196,10 @@ fn build_lockfile_rewriters(
         rewriters.push(Box::new(GoSumRewriter::new(go_pkgs)?));
     }
 
-    // Other ecosystems ship in later phases. Warn so the operator knows we're
-    // skipping entries for ecosystems that aren't yet implemented.
-    for eco in ["composer"] {
-        if let Some(v) = by_eco.get(eco) {
-            warn!(
-                ecosystem = eco,
-                count = v.len(),
-                "supply-chain entries for ecosystem are not yet rewritten in v1; skipped"
-            );
-        }
+    // composer: composer.lock (JSON with `packages` and `packages-dev` arrays).
+    // All 10 ecosystems supported in v1.
+    if let Some(composer_pkgs) = by_eco.get("composer") {
+        rewriters.push(Box::new(ComposerLockRewriter::new(composer_pkgs)?));
     }
 
     Ok(rewriters)

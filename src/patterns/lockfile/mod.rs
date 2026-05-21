@@ -19,6 +19,9 @@ pub use bun::BunLockRewriter;
 pub mod cargo;
 pub use cargo::CargoLockRewriter;
 
+pub mod composer;
+pub use composer::ComposerLockRewriter;
+
 pub mod go;
 pub use go::GoSumRewriter;
 
