@@ -149,6 +149,126 @@ fn clean_help_runs() {
 }
 
 #[test]
+fn audit_help_runs() {
+    let out = Command::new(bin_path())
+        .args(["audit", "--help"])
+        .output()
+        .expect("run");
+    assert!(out.status.success());
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    for flag in ["--ai", "--supply", "--curate", "--all", "--report"] {
+        assert!(
+            stdout.contains(flag),
+            "missing {flag} in audit --help output"
+        );
+    }
+}
+
+#[test]
+fn audit_against_empty_repo_succeeds_and_prints_report() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let dir = tmp.path();
+    std::process::Command::new("git")
+        .args(["init", "-q", "-b", "main"])
+        .current_dir(dir)
+        .status()
+        .expect("git init");
+    std::process::Command::new("git")
+        .args([
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "init",
+        ])
+        .current_dir(dir)
+        .status()
+        .expect("commit");
+
+    let out = Command::new(bin_path())
+        .args(["-C", &dir.display().to_string(), "audit"])
+        .output()
+        .expect("run");
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        stdout.contains("# git-scrub audit report"),
+        "expected report header: {stdout}"
+    );
+    assert!(
+        stdout.contains("## AI residue (history)"),
+        "expected AI section: {stdout}"
+    );
+    assert!(
+        stdout.contains("## Supply chain (history)"),
+        "expected supply section: {stdout}"
+    );
+    assert!(
+        stdout.contains("## Working-tree curation"),
+        "expected curate section: {stdout}"
+    );
+    assert!(
+        stdout.contains("## Summary"),
+        "expected summary section: {stdout}"
+    );
+}
+
+#[test]
+fn audit_scope_flag_limits_sections() {
+    let tmp = tempfile::tempdir().expect("tempdir");
+    let dir = tmp.path();
+    std::process::Command::new("git")
+        .args(["init", "-q", "-b", "main"])
+        .current_dir(dir)
+        .status()
+        .expect("git init");
+    std::process::Command::new("git")
+        .args([
+            "-c",
+            "user.email=t@t",
+            "-c",
+            "user.name=t",
+            "commit",
+            "--allow-empty",
+            "-qm",
+            "init",
+        ])
+        .current_dir(dir)
+        .status()
+        .expect("commit");
+
+    let out = Command::new(bin_path())
+        .args(["-C", &dir.display().to_string(), "audit", "--curate"])
+        .output()
+        .expect("run");
+    assert!(
+        out.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    let stdout = String::from_utf8(out.stdout).unwrap();
+    assert!(
+        stdout.contains("## Working-tree curation"),
+        "expected curate section: {stdout}"
+    );
+    assert!(
+        !stdout.contains("## AI residue (history)"),
+        "should NOT contain AI section when --curate only: {stdout}"
+    );
+    assert!(
+        !stdout.contains("## Supply chain (history)"),
+        "should NOT contain supply section when --curate only: {stdout}"
+    );
+}
+
+#[test]
 fn clean_with_no_targets_errors() {
     // No --ai, --spill-paths, or --supply supplied → must exit non-zero
     // with a helpful error message.

@@ -38,7 +38,7 @@ use crate::patterns::{
 use crate::{gh, plan, preflight, runbook, scan, verify};
 
 /// Args for `git-scrub clean`.
-// CleanArgs has five boolean fields because it is a CLI argument struct where
+// CleanArgs has six boolean fields because it is a CLI argument struct where
 // every bool represents a distinct flag. The lint fires here by design.
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Args)]
@@ -58,6 +58,11 @@ pub struct CleanArgs {
     /// Actually rewrite history. Without this flag, only the plan is emitted.
     #[arg(long)]
     pub execute: bool,
+
+    /// Audit mode (no rewrites; equivalent to omitting --execute).
+    /// Provided for clarity in scripted use.
+    #[arg(long, conflicts_with = "execute")]
+    pub audit: bool,
 
     /// Where to write the mirror-clone backup. Defaults to platform cache dir.
     #[arg(long, value_name = "PATH")]
@@ -461,6 +466,7 @@ mod tests {
             spill_paths: vec![],
             supply: false,
             execute: false,
+            audit: false,
             backup_to: None,
             no_backup: false,
             really_no_backup_i_mean_it: false,

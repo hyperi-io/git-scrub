@@ -102,6 +102,43 @@ pub struct TrackedConflictStage {
     pub tracked_conflicts: Vec<PathBuf>,
 }
 
+// ── Audit-only public API ─────────────────────────────────────────────────────
+
+/// Summary returned by [`audit_only`] — results of all four curate audit passes.
+#[derive(Debug, Default)]
+pub struct CurateAuditSummary {
+    /// Gitignore paths missing from `.gitignore`.
+    pub gitignore_missing: Vec<String>,
+    /// Policy file names absent from the repo root.
+    pub policy_files_missing: Vec<String>,
+    /// Stray tool-reference findings: `(repo-relative path, 1-based line, matched text)`.
+    pub stray_reference_findings: Vec<(PathBuf, usize, String)>,
+    /// Tracked paths that should be gitignored per the curate config.
+    pub tracked_conflicts: Vec<PathBuf>,
+}
+
+/// Run all four curate audit passes in read-only mode and return a summary.
+///
+/// This is called by the `audit` umbrella subcommand so it can include curate
+/// results in the consolidated report without re-implementing the scan logic.
+pub fn audit_only(repo_dir: &Path, config: Option<&Path>) -> Result<CurateAuditSummary> {
+    let cfg = load_config(config)?;
+    let stage1 = scan_gitignore_additions(repo_dir, &cfg)?;
+    let stage2 = scan_policy_files(repo_dir, &cfg);
+    let stage3 = scan_stray_references(repo_dir, &cfg)?;
+    let stage4 = scan_tracked_conflicts(repo_dir, &cfg)?;
+    Ok(CurateAuditSummary {
+        gitignore_missing: stage1.missing,
+        policy_files_missing: stage2.missing,
+        stray_reference_findings: stage3
+            .findings
+            .into_iter()
+            .map(|f| (f.file, f.line, f.matched_text))
+            .collect(),
+        tracked_conflicts: stage4.tracked_conflicts,
+    })
+}
+
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 /// Run `ai curate` against the given repo directory.

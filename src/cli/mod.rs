@@ -13,6 +13,7 @@
 //! (git's `git-<name>` convention).
 
 pub mod ai;
+pub mod audit;
 pub mod clean;
 pub mod curate;
 pub mod spill;
@@ -61,6 +62,8 @@ pub enum Command {
     Supply(supply::SupplyArgs),
     /// Umbrella: single-pass composition of ai + spill-paths + supply.
     Clean(clean::CleanArgs),
+    /// Audit: read-only multi-source survey, emits a consolidated report.
+    Audit(audit::AuditArgs),
 }
 
 /// Run the parsed CLI to completion.
@@ -76,6 +79,7 @@ pub fn run(cli: &Cli) -> anyhow::Result<()> {
         Command::Spill(args) => spill::run(args, repo),
         Command::Supply(args) => supply::run(args, repo),
         Command::Clean(args) => clean::run(args, repo),
+        Command::Audit(args) => audit::run(args, repo),
     }
 }
 

@@ -46,11 +46,18 @@ pub enum AiMode {
 }
 
 /// Args shared by `attribution`, `files`, and `composite`.
+// SharedArgs is a CLI argument struct; every bool represents a distinct flag.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Args)]
 pub struct SharedArgs {
     /// Actually rewrite history. Without this flag, we only emit the plan.
     #[arg(long)]
     pub execute: bool,
+
+    /// Audit mode (no rewrites; equivalent to omitting --execute).
+    /// Provided for clarity in scripted use.
+    #[arg(long, conflicts_with = "execute")]
+    pub audit: bool,
 
     /// Override path to the attribution YAML.
     #[arg(long, value_name = "PATH")]

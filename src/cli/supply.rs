@@ -68,11 +68,18 @@ pub struct PackagesArgs {
 }
 
 /// Shared options for every supply mode (except `patterns`).
+// CommonArgs is a CLI argument struct; every bool represents a distinct flag.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Args)]
 pub struct CommonArgs {
     /// Actually rewrite history. Without this, only the plan is emitted.
     #[arg(long)]
     pub execute: bool,
+
+    /// Audit mode (no rewrites; equivalent to omitting --execute).
+    /// Provided for clarity in scripted use.
+    #[arg(long, conflicts_with = "execute")]
+    pub audit: bool,
 
     /// Where to write the mirror-clone backup. Defaults to platform cache dir.
     #[arg(long, value_name = "PATH")]
