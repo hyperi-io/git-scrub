@@ -22,6 +22,9 @@ pub use cargo::CargoLockRewriter;
 pub mod npm;
 pub use npm::NpmLockRewriter;
 
+pub mod pip;
+pub use pip::PipLockRewriter;
+
 pub mod pnpm;
 pub use pnpm::PnpmLockRewriter;
 

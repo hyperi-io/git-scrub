@@ -37,6 +37,7 @@ mod e2e {
     pub mod supply_bun;
     pub mod supply_cargo;
     pub mod supply_npm;
+    pub mod supply_pip;
     pub mod supply_pnpm;
     pub mod supply_poetry;
     pub mod supply_uv;

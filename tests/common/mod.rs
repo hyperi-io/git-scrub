@@ -376,6 +376,45 @@ pub fn mint_repo_with_bun_lockfile_containing_axios() -> TempRepo {
     repo
 }
 
+/// Mint a temporary git repo with a `Pipfile.lock` containing a bad package
+/// (`axios` at 1.6.1) in both `default` and `develop`, plus an innocent package.
+///
+/// Used by tests that verify `PipLockRewriter`.
+#[must_use]
+pub fn mint_repo_with_pipfile_lock_containing_axios() -> TempRepo {
+    let repo = TempRepo::new();
+    repo.write_file(
+        "Pipfile.lock",
+        r#"{
+    "_meta": {
+        "hash": {"sha256": "deadbeef"},
+        "pipfile-spec": 6,
+        "requires": {"python_version": "3.11"},
+        "sources": [{"name": "pypi", "url": "https://pypi.org/simple", "verify_ssl": true}]
+    },
+    "default": {
+        "axios": {
+            "hashes": ["sha256:dead000000000000000000000000000000000000000000000000000000000000"],
+            "version": "==1.6.1"
+        },
+        "innocent-utils": {
+            "hashes": ["sha256:alive00000000000000000000000000000000000000000000000000000000000"],
+            "version": "==1.0.0"
+        }
+    },
+    "develop": {
+        "pytest": {
+            "hashes": ["sha256:test000000000000000000000000000000000000000000000000000000000000"],
+            "version": "==7.0.0"
+        }
+    }
+}
+"#,
+    );
+    repo.add_all_commit("add Pipfile.lock with axios + innocent-utils");
+    repo
+}
+
 fn run_git(cwd: &Path, args: &[&str]) {
     let status = Command::new("git")
         .arg("-C")

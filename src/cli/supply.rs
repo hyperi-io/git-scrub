@@ -25,7 +25,8 @@ use tracing::{info, warn};
 
 use crate::engine::{self, EngineStats, backup};
 use crate::patterns::lockfile::{
-    BunLockRewriter, CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter, YarnLockRewriter,
+    BunLockRewriter, CargoLockRewriter, NpmLockRewriter, PipLockRewriter, PnpmLockRewriter,
+    YarnLockRewriter,
 };
 use crate::patterns::supply::{CompromisedPackage, PurgeTarget, SupplyConfig};
 use crate::patterns::{LockfileRewriter, discovery};
@@ -185,9 +186,14 @@ fn build_lockfile_rewriters(
         rewriters.push(Box::new(BunLockRewriter::new(bun_pkgs)?));
     }
 
+    // pip: Pipfile.lock (JSON with `default` and `develop` sections).
+    if let Some(pip_pkgs) = by_eco.get("pip") {
+        rewriters.push(Box::new(PipLockRewriter::new(pip_pkgs)?));
+    }
+
     // Other ecosystems ship in later phases. Warn so the operator knows we're
     // skipping entries for ecosystems that aren't yet implemented.
-    for eco in ["pip", "go", "composer"] {
+    for eco in ["go", "composer"] {
         if let Some(v) = by_eco.get(eco) {
             warn!(
                 ecosystem = eco,
