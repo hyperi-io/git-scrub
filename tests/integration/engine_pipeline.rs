@@ -10,15 +10,15 @@ use git_scrub::engine;
 use git_scrub::patterns::attribution::parse_yaml as parse_attr;
 use git_scrub::patterns::discovery::{EMBEDDED_ATTRIBUTION, EMBEDDED_FILES};
 use git_scrub::patterns::files::parse_yaml as parse_files;
-use git_scrub::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter};
+use git_scrub::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter};
 use git_scrub::patterns::supply::{CompromisedPackage, PurgeTarget};
 use git_scrub::patterns::{AttributionRewriter, FileMatcher, FileMatcherOptions, LockfileRewriter};
 use git_scrub::verify::{self, VerifyError};
 
 use crate::common::{
     TempRepo, mint_repo_with_cargo_lock_containing_axios,
-    mint_repo_with_npm_lockfile_containing_axios, mint_repo_with_poetry_lock_containing_axios,
-    mint_repo_with_uv_lock_containing_axios,
+    mint_repo_with_npm_lockfile_containing_axios, mint_repo_with_pnpm_lockfile_containing_axios,
+    mint_repo_with_poetry_lock_containing_axios, mint_repo_with_uv_lock_containing_axios,
 };
 
 #[test]
@@ -350,4 +350,44 @@ fn cargo_lock_rewriter_also_strips_from_poetry_lock() {
 
     verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
         .expect("verify after CargoLockRewriter on poetry.lock must pass");
+}
+
+#[test]
+fn pnpm_lock_rewriter_strips_axios_from_synthetic_repo() {
+    let bad = CompromisedPackage {
+        name: "axios".to_string(),
+        ecosystem: "pnpm".to_string(),
+        versions: vec!["1.6.1".to_string()],
+        advisories: vec![],
+        purge_targets: vec![PurgeTarget::LockfileEntry],
+        notes: None,
+    };
+    let rewriter: Box<dyn LockfileRewriter> = Box::new(PnpmLockRewriter::new(&[&bad]).unwrap());
+
+    let repo = mint_repo_with_pnpm_lockfile_containing_axios();
+    let rewriters = vec![rewriter];
+    let stats =
+        engine::run(repo.path(), None, None, None, Some(rewriters.as_slice())).expect("engine run");
+    assert!(
+        stats.blobs_rewritten >= 1,
+        "expected at least one pnpm blob rewritten: {stats:?}"
+    );
+
+    let after = repo.read_file_at_head("pnpm-lock.yaml");
+    let after_str = String::from_utf8_lossy(&after);
+    assert!(
+        !after_str.contains("axios@1.6.1"),
+        "axios should be gone from pnpm-lock.yaml:\n{after_str}"
+    );
+    assert!(
+        !after_str.contains("axios:"),
+        "axios importer dep should be gone from pnpm-lock.yaml:\n{after_str}"
+    );
+    assert!(
+        after_str.contains("innocent-utils"),
+        "innocent-utils should remain in pnpm-lock.yaml:\n{after_str}"
+    );
+
+    verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
+        .expect("verify after PnpmLockRewriter must pass — axios should be gone");
 }

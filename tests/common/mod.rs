@@ -266,6 +266,45 @@ python-versions = "^3.11"
     repo
 }
 
+/// Mint a temporary git repo with a `pnpm-lock.yaml` (lockfileVersion 9.0)
+/// containing an `axios` package (bad) and an `innocent-utils` package (clean).
+///
+/// Used by tests that verify `PnpmLockRewriter`.
+#[must_use]
+pub fn mint_repo_with_pnpm_lockfile_containing_axios() -> TempRepo {
+    let repo = TempRepo::new();
+    repo.write_file(
+        "pnpm-lock.yaml",
+        r#"lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      axios:
+        specifier: ^1.6.0
+        version: 1.6.1
+      innocent-utils:
+        specifier: ^1.0.0
+        version: 1.0.0
+
+packages:
+  axios@1.6.1:
+    resolution:
+      integrity: sha512-dead
+
+  innocent-utils@1.0.0:
+    resolution:
+      integrity: sha512-alive
+
+snapshots:
+  axios@1.6.1: {}
+  innocent-utils@1.0.0: {}
+"#,
+    );
+    repo.add_all_commit("add pnpm-lock.yaml with axios + innocent-utils");
+    repo
+}
+
 fn run_git(cwd: &Path, args: &[&str]) {
     let status = Command::new("git")
         .arg("-C")

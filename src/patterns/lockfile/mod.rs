@@ -19,6 +19,9 @@ pub use cargo::CargoLockRewriter;
 pub mod npm;
 pub use npm::NpmLockRewriter;
 
+pub mod pnpm;
+pub use pnpm::PnpmLockRewriter;
+
 /// A transformer that conditionally rewrites lockfile blob contents.
 pub trait LockfileRewriter: Send + Sync {
     /// Whether this rewriter applies to the given committed path.

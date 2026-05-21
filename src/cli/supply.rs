@@ -24,7 +24,7 @@ use clap::{Args, Subcommand};
 use tracing::{info, warn};
 
 use crate::engine::{self, EngineStats, backup};
-use crate::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter};
+use crate::patterns::lockfile::{CargoLockRewriter, NpmLockRewriter, PnpmLockRewriter};
 use crate::patterns::supply::{CompromisedPackage, PurgeTarget, SupplyConfig};
 use crate::patterns::{LockfileRewriter, discovery};
 use crate::{gh, plan, preflight, runbook, scan, verify};
@@ -168,9 +168,14 @@ fn build_lockfile_rewriters(
         rewriters.push(Box::new(NpmLockRewriter::new(npm_pkgs)?));
     }
 
-    // Other ecosystems ship in Phases 9-16. Warn so the operator knows we're
+    // pnpm: pnpm-lock.yaml (lockfileVersion 6.0+).
+    if let Some(pnpm_pkgs) = by_eco.get("pnpm") {
+        rewriters.push(Box::new(PnpmLockRewriter::new(pnpm_pkgs)?));
+    }
+
+    // Other ecosystems ship in Phases 10-16. Warn so the operator knows we're
     // skipping entries for ecosystems that aren't yet implemented.
-    for eco in ["pnpm", "yarn", "bun", "pip", "go", "composer"] {
+    for eco in ["yarn", "bun", "pip", "go", "composer"] {
         if let Some(v) = by_eco.get(eco) {
             warn!(
                 ecosystem = eco,
