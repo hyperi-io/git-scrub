@@ -17,7 +17,8 @@ use git_scrub::verify::{self, VerifyError};
 
 use crate::common::{
     TempRepo, mint_repo_with_cargo_lock_containing_axios,
-    mint_repo_with_npm_lockfile_containing_axios,
+    mint_repo_with_npm_lockfile_containing_axios, mint_repo_with_poetry_lock_containing_axios,
+    mint_repo_with_uv_lock_containing_axios,
 };
 
 #[test]
@@ -277,4 +278,76 @@ fn npm_lock_rewriter_strips_axios_from_synthetic_repo() {
 
     verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
         .expect("verify after NpmLockRewriter must pass — axios should be gone");
+}
+
+#[test]
+fn cargo_lock_rewriter_also_strips_from_uv_lock() {
+    let bad = CompromisedPackage {
+        name: "axios".to_string(),
+        ecosystem: "uv".to_string(),
+        versions: vec!["1.6.1".to_string()],
+        advisories: vec![],
+        purge_targets: vec![PurgeTarget::LockfileEntry],
+        notes: None,
+    };
+    let rewriter: Box<dyn LockfileRewriter> = Box::new(CargoLockRewriter::new(&[&bad]).unwrap());
+
+    let repo = mint_repo_with_uv_lock_containing_axios();
+    let rewriters = vec![rewriter];
+    let stats =
+        engine::run(repo.path(), None, None, None, Some(rewriters.as_slice())).expect("engine run");
+    assert!(
+        stats.blobs_rewritten >= 1,
+        "expected at least one uv.lock blob rewritten: {stats:?}"
+    );
+
+    let after = repo.read_file_at_head("uv.lock");
+    let after_str = String::from_utf8_lossy(&after);
+    assert!(
+        !after_str.contains("name = \"axios\""),
+        "axios should be gone from uv.lock:\n{after_str}"
+    );
+    assert!(
+        after_str.contains("innocent-utils"),
+        "innocent-utils should remain in uv.lock:\n{after_str}"
+    );
+
+    verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
+        .expect("verify after CargoLockRewriter on uv.lock must pass");
+}
+
+#[test]
+fn cargo_lock_rewriter_also_strips_from_poetry_lock() {
+    let bad = CompromisedPackage {
+        name: "axios".to_string(),
+        ecosystem: "poetry".to_string(),
+        versions: vec!["1.6.1".to_string()],
+        advisories: vec![],
+        purge_targets: vec![PurgeTarget::LockfileEntry],
+        notes: None,
+    };
+    let rewriter: Box<dyn LockfileRewriter> = Box::new(CargoLockRewriter::new(&[&bad]).unwrap());
+
+    let repo = mint_repo_with_poetry_lock_containing_axios();
+    let rewriters = vec![rewriter];
+    let stats =
+        engine::run(repo.path(), None, None, None, Some(rewriters.as_slice())).expect("engine run");
+    assert!(
+        stats.blobs_rewritten >= 1,
+        "expected at least one poetry.lock blob rewritten: {stats:?}"
+    );
+
+    let after = repo.read_file_at_head("poetry.lock");
+    let after_str = String::from_utf8_lossy(&after);
+    assert!(
+        !after_str.contains("name = \"axios\""),
+        "axios should be gone from poetry.lock:\n{after_str}"
+    );
+    assert!(
+        after_str.contains("innocent-utils"),
+        "innocent-utils should remain in poetry.lock:\n{after_str}"
+    );
+
+    verify::run(repo.path(), None, None, None, Some(rewriters.as_slice()))
+        .expect("verify after CargoLockRewriter on poetry.lock must pass");
 }
