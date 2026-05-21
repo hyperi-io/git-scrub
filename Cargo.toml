@@ -7,8 +7,7 @@
 #  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
 [workspace]
-# `tools/refresh-advisories` will be added as a member in Phase 18.
-members = ["."]
+members = [".", "tools/refresh-advisories"]
 resolver = "3"
 
 [package]

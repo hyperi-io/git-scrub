@@ -1,0 +1,32 @@
+#  Project:      git-scrub
+#  File:         tools/refresh-advisories/Cargo.toml
+#  Purpose:      Maintainer tool: regenerate config/patterns/supply-chain.yaml from upstream advisory feeds.
+#  Language:     Rust
+#
+#  License:      Apache-2.0
+#  Copyright:    (c) 2026 HYPERI PTY LIMITED
+
+[package]
+name = "refresh-advisories"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.94"
+license = "Apache-2.0"
+description = "Maintainer tool: regenerate config/patterns/supply-chain.yaml from upstream advisory feeds."
+publish = false
+
+[dependencies]
+anyhow = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml_ng = "0.10"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+toml = "1.1"
+walkdir = "2.5"
+tempfile = "3.13"
+
+[[bin]]
+name = "refresh-advisories"
+path = "src/main.rs"
