@@ -332,6 +332,50 @@ pub fn mint_repo_with_yarn_lockfile_containing_axios() -> TempRepo {
     repo
 }
 
+/// Mint a temporary git repo with a `bun.lock` (text format) containing an
+/// `axios` package (bad) and an `innocent-utils` package (clean).
+///
+/// Used by tests that verify `BunLockRewriter`.
+#[must_use]
+pub fn mint_repo_with_bun_lockfile_containing_axios() -> TempRepo {
+    let repo = TempRepo::new();
+    repo.write_file(
+        "package.json",
+        r#"{
+  "name": "fixture-bun-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "axios": "1.6.1",
+    "innocent-utils": "1.0.0"
+  }
+}
+"#,
+    );
+    repo.write_file(
+        "bun.lock",
+        r#"{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "fixture-bun-app",
+      "version": "1.0.0",
+      "dependencies": {
+        "axios": "1.6.1",
+        "innocent-utils": "1.0.0"
+      }
+    }
+  },
+  "packages": {
+    "axios": ["axios@1.6.1", "registry+https://registry.npmjs.org/", { "integrity": "sha512-dead..." }, ""],
+    "innocent-utils": ["innocent-utils@1.0.0", "registry+https://registry.npmjs.org/", { "integrity": "sha512-alive..." }, ""]
+  }
+}
+"#,
+    );
+    repo.add_all_commit("add bun.lock with axios + innocent-utils");
+    repo
+}
+
 fn run_git(cwd: &Path, args: &[&str]) {
     let status = Command::new("git")
         .arg("-C")

@@ -34,6 +34,7 @@ mod common;
 
 mod e2e {
     // Per-ecosystem test modules land here in Phases 4-16.
+    pub mod supply_bun;
     pub mod supply_cargo;
     pub mod supply_npm;
     pub mod supply_pnpm;

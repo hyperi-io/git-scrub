@@ -13,6 +13,9 @@
 //! known lockfile basename. This requires the engine to maintain a
 //! `mark -> content` cache for in-flight blobs.
 
+pub mod bun;
+pub use bun::BunLockRewriter;
+
 pub mod cargo;
 pub use cargo::CargoLockRewriter;
 
