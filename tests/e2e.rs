@@ -39,4 +39,5 @@ mod e2e {
     pub mod supply_pnpm;
     pub mod supply_poetry;
     pub mod supply_uv;
+    pub mod supply_yarn;
 }
