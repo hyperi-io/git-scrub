@@ -158,19 +158,30 @@ impl AttributionRewriter {
     /// byte-exact.
     #[must_use]
     pub fn apply(&self, message: &[u8]) -> Vec<u8> {
+        self.apply_with_drop_count(message).0
+    }
+
+    /// Like [`Self::apply`] but also returns the number of attribution lines
+    /// matched and dropped (separate from any cosmetic cleanup).
+    ///
+    /// Useful for audit/scan: a drop count of zero means no AI residue was
+    /// detected, even if cleanup transformations changed whitespace.
+    #[must_use]
+    pub fn apply_with_drop_count(&self, message: &[u8]) -> (Vec<u8>, usize) {
         let mut kept_lines: Vec<&[u8]> = Vec::new();
+        let mut dropped: usize = 0;
         for line in split_lines(message) {
             let probe: &[u8] = if self.cleanup.strip_trailing_whitespace {
                 trim_trailing_ws(line)
             } else {
                 line
             };
-            if !self.set.is_match(probe) {
-                if self.cleanup.strip_trailing_whitespace {
-                    kept_lines.push(probe);
-                } else {
-                    kept_lines.push(line);
-                }
+            if self.set.is_match(probe) {
+                dropped += 1;
+            } else if self.cleanup.strip_trailing_whitespace {
+                kept_lines.push(probe);
+            } else {
+                kept_lines.push(line);
             }
         }
 
@@ -185,7 +196,7 @@ impl AttributionRewriter {
             }
             out.extend_from_slice(line);
         }
-        out
+        (out, dropped)
     }
 }
 

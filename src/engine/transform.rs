@@ -280,13 +280,15 @@ fn read_commit_pre_data<R: BufRead>(
             let mut buf = vec![0u8; len];
             br.read_exact(&mut buf).map_err(EngineError::Io)?;
             consume_optional_lf(br)?;
-            let rewritten = if let Some(r) = attribution {
-                r.apply(&buf)
+            let (rewritten, dropped) = if let Some(r) = attribution {
+                r.apply_with_drop_count(&buf)
             } else {
-                buf.clone()
+                (buf.clone(), 0)
             };
-            let changed = rewritten != buf;
-            return Ok((pre_data, rewritten, changed));
+            // "changed" reports whether attribution patterns ACTUALLY matched —
+            // not whether cosmetic cleanup altered whitespace. Audit consumers
+            // rely on this distinction.
+            return Ok((pre_data, rewritten, dropped > 0));
         }
         // Keep next_mark ahead of every mark observed in the stream so synthetic
         // blob marks allocated later in process_commit never collide.
@@ -599,12 +601,12 @@ fn rewrite_data_block<R: BufRead, W: Write>(
     br.read_exact(&mut buf).map_err(EngineError::Io)?;
     consume_optional_lf(br)?;
 
-    let rewritten = if let Some(r) = attribution {
-        r.apply(&buf)
+    let (rewritten, dropped) = if let Some(r) = attribution {
+        r.apply_with_drop_count(&buf)
     } else {
-        buf.clone()
+        (buf.clone(), 0)
     };
-    if is_commit && rewritten != buf {
+    if is_commit && dropped > 0 {
         stats.commits_rewritten += 1;
     }
 
