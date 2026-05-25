@@ -33,10 +33,10 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Install cross
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
+      - name: Install aarch64 cross-linker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
 
       - name: Build linux-amd64 (native)
         run: |
@@ -44,9 +44,12 @@ jobs:
           mkdir -p dist
           cp target/x86_64-unknown-linux-gnu/release/git-scrub dist/git-scrub-linux-amd64
 
-      - name: Build linux-arm64 (via cross)
+      - name: Build linux-arm64 (cross-linker)
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
         run: |
-          cross build --release --target aarch64-unknown-linux-gnu
+          cargo build --release --target aarch64-unknown-linux-gnu
           cp target/aarch64-unknown-linux-gnu/release/git-scrub dist/git-scrub-linux-arm64
 
       - name: Upload linux binaries
