@@ -555,6 +555,11 @@ pub fn fixture_repo_from(raw: Option<&str>) -> FixtureRepoOutcome {
 
 /// Clone a remote URL into `.tmp/fixture-cache/<slug>`, reusing the existing
 /// clone when present (refreshed via `git fetch --all --tags`).
+///
+/// Race-safe under parallel `nextest` execution: each process clones into a
+/// per-pid staging directory and atomically renames into place. If the rename
+/// fails because another process won the race, the staging clone is discarded
+/// and the winner's clone is used.
 fn clone_to_cache(url: &str) -> anyhow::Result<PathBuf> {
     let project_root = std::env::var("CARGO_MANIFEST_DIR")
         .map(PathBuf::from)
@@ -562,13 +567,11 @@ fn clone_to_cache(url: &str) -> anyhow::Result<PathBuf> {
     let cache = project_root.join(".tmp/fixture-cache");
     std::fs::create_dir_all(&cache)?;
 
-    // Build a filesystem-safe slug from the URL characters.
     let slug: String = url.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
     let dest = cache.join(&slug);
 
+    // Fast path: cache already populated.
     if dest.join(".git").is_dir() {
-        // Refresh the existing clone — best effort; ignore errors so tests
-        // can still run with a stale-but-present clone when offline.
         let _ = Command::new("git")
             .args([
                 "-C",
@@ -579,11 +582,28 @@ fn clone_to_cache(url: &str) -> anyhow::Result<PathBuf> {
                 "--quiet",
             ])
             .status();
-    } else {
-        let status = Command::new("git")
-            .args(["clone", "--quiet", "--", url, &dest.display().to_string()])
-            .status()?;
-        anyhow::ensure!(status.success(), "git clone failed for {url}");
+        return Ok(dest);
+    }
+
+    // Slow path: clone into a per-process staging directory, then atomically
+    // rename to the final destination. If another parallel test wins the race
+    // (rename fails because dest now exists), discard our staging clone and
+    // use the winner's.
+    let pid = std::process::id();
+    let staging = cache.join(format!("{slug}.staging.{pid}"));
+    let _ = std::fs::remove_dir_all(&staging);
+    let status = Command::new("git")
+        .args(["clone", "--quiet", "--", url, &staging.display().to_string()])
+        .status()?;
+    anyhow::ensure!(status.success(), "git clone failed for {url}");
+
+    if std::fs::rename(&staging, &dest).is_err() {
+        let _ = std::fs::remove_dir_all(&staging);
+        anyhow::ensure!(
+            dest.join(".git").is_dir(),
+            "fixture cache race: lost rename but winner's clone is incomplete at {}",
+            dest.display(),
+        );
     }
     Ok(dest)
 }
@@ -613,6 +633,10 @@ pub fn snapshot_fixture(src: &Path, tag: &str) -> anyhow::Result<TempRepo> {
         .status()?;
     anyhow::ensure!(status.success(), "git clone --local failed");
 
+    // Use `refs/tags/<tag>` to disambiguate slash-containing tag names
+    // (e.g. `fixtures/supply-v1/composer`) on older git versions that
+    // would otherwise treat the slash as a path component.
+    let ref_spec = format!("refs/tags/{tag}");
     let status = Command::new("git")
         .args([
             "-C",
@@ -620,7 +644,7 @@ pub fn snapshot_fixture(src: &Path, tag: &str) -> anyhow::Result<TempRepo> {
             "checkout",
             "--detach",
             "--quiet",
-            tag,
+            &ref_spec,
         ])
         .status()?;
     anyhow::ensure!(status.success(), "checkout fixture tag {tag} failed");
