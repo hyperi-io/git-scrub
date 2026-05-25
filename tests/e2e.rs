@@ -49,4 +49,10 @@ mod e2e {
     // Phase 19: AI and spill-paths fixture e2e tests.
     pub mod ai_composite;
     pub mod spill_paths;
+    // Phase 20: targeted coverage gap tests.
+    pub mod ai_attribution;
+    pub mod ai_curate_execute;
+    pub mod ai_files;
+    pub mod audit_against_fixtures;
+    pub mod clean_with_ai;
 }
