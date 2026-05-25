@@ -5,6 +5,11 @@
 # canonical representation, identical across all platforms). Trailing `/`
 # means "this directory and everything under it".
 #
+# Patterns without a leading "/" or "**/" are automatically expanded to
+# match anywhere in the path hierarchy. ".claude/**" fires on both
+# ".claude/notes.md" (repo root) and "my-app/.claude/notes.md" (nested).
+# Use a leading "/" to restrict a pattern to the repo root only.
+#
 # The exclude_by_default section is the smart agentic-coding state-file
 # family. These files are commonly symlinked to a STATE.md master so all
 # AI coding tools (Claude, Gemini, Cursor, Codex, …) read the same

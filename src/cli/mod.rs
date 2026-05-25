@@ -30,8 +30,10 @@ use clap::{Parser, Subcommand};
     version,
     about = "Surgical removal of unwanted content from git history",
     long_about = "git-scrub removes AI tool residue (attribution trailers + artefact \
-                  files) and accidental data spill from a repository's entire history. \
-                  Default mode is dry-run. Pass `--execute` to actually rewrite history."
+                  files), supply chain lockfile entries, and operator-supplied spill \
+                  paths from a repository's entire history. Run `audit` first for a \
+                  read-only picture of what would be changed. Default mode is dry-run; \
+                  pass `--execute` to actually rewrite history."
 )]
 pub struct Cli {
     /// Path to the repository working tree (defaults to current directory).
@@ -51,7 +53,7 @@ pub struct Cli {
     pub command: Command,
 }
 
-/// Use-case subcommands. `ai` is opinionated/v1; `spill` is operator-supplied/v2.
+/// Use-case subcommands.
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// AI scrub: attribution trailers and artefact files.

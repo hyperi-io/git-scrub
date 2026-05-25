@@ -7,10 +7,23 @@ Surgical removal of unwanted content from git history. Two use cases:
   trailers (`Co-Authored-By: Claude`, `Co-authored-by: Cursor`,
   `🤖 Generated with [Claude Code]`, …). Opinionated pattern library
   covers Claude, Copilot, Cursor, Codex, Aider, Gemini, WindSurf.
-- **Spill scrub** (`git scrub spill` / `git-scrub spill`) *(v2)* —
-  incident response: remove a specific file / path / text pattern that
-  "got away" past the preventive layers. Operator supplies what to
-  remove; the tool provides safety scaffolding + runbook.
+- **Spill scrub** (`git scrub spill` / `git-scrub spill`) —
+  incident response: remove a specific file / path that "got away"
+  past the preventive layers. Operator supplies globs; the tool
+  provides safety scaffolding + runbook. (`spill paths` ships in v1;
+  `spill text` / `spill secrets` are scaffolded, not wired.)
+- **Supply chain scrub** (`git scrub supply` / `git-scrub supply`) —
+  strip compromised lockfile entries from history across all ten
+  package ecosystems (Cargo, npm, pnpm, yarn, bun, uv, pip, poetry,
+  go, composer). Driven by a bundled advisory snapshot; also accepts
+  ad-hoc package lists for incident response.
+- **Clean** (`git scrub clean` / `git-scrub clean`) — single-pass
+  composition of any combination of AI scrub, spill-paths purge, and
+  supply chain scrub. One backup, one verify, one runbook.
+- **Audit** (`git scrub audit` / `git-scrub audit`) — read-only
+  survey. Runs every available check and emits a consolidated markdown
+  report covering AI residue, supply chain hits, and working-tree
+  curation state.
 
 ## Name and invocation
 
@@ -29,7 +42,8 @@ are equivalent surfaces. Pick whichever you prefer.
 
 ## Status
 
-**Pre-alpha.** Scaffolded 2026-05-13. No release yet.
+**Pre-release.** No distribution channel ships yet — install via
+`cargo install` from source.
 
 What works today (cross-platform: Linux + macOS + Windows):
 
@@ -38,7 +52,22 @@ What works today (cross-platform: Linux + macOS + Windows):
 - `git scrub ai attribution` — attribution trailers only
 - `git scrub ai files` — artefact files only
 - `git scrub ai patterns` — dump the active pattern library
-- Dry-run by default; `--execute` to actually rewrite
+- `git scrub ai curate` — working-tree curation (gitignore entries,
+  policy files, stray tool-name references)
+- `git scrub spill paths <GLOB>...` — purge operator-supplied file
+  globs from history
+- `git scrub supply composite|lockfiles|packages|advisories|patterns`
+  — supply chain scrub across all ten lockfile ecosystems (Cargo,
+  npm, pnpm, yarn, bun text lockfile, uv, pip, poetry, go, composer)
+- `git scrub clean [--ai] [--spill-paths <GLOB>...] [--supply]` —
+  single-pass composition of any combination of the above
+- `git scrub audit [--ai] [--supply] [--curate] [--all]` — read-only
+  consolidated audit report
+- Attribution matching is case-insensitive (`(?i)` in all patterns)
+- File patterns match paths anywhere in the tree (nested monorepo
+  sub-directories), not just at the repo root
+- Dry-run by default; `--execute` to actually rewrite; `--audit` as a
+  declarative synonym for dry-run on all rewrite subcommands
 - Mandatory mirror-clone backup to the platform cache dir before any
   rewrite (override via `--backup-to`; bypass via `--no-backup
   --really-no-backup-i-mean-it`)
@@ -49,18 +78,20 @@ What works today (cross-platform: Linux + macOS + Windows):
   is on PATH and authenticated) fork list, closed-PR list, branch-
   protection state, GitHub Support contact template, and collaborator
   notification template
+- `AI-TRAINING-POLICY.md` and `robots.txt` embedded in the binary and
+  written to the working tree by `ai curate`
 
 What's not done yet (still v1):
 
 - Distribution channels — see *Distribution* below
-- `gh` integration for in-flight Actions check (refuse rewrite if a
-  workflow is touching the affected branches)
 
 What's deferred (v2):
 
-- Spill scrub (`spill paths`, `spill text`, `spill secrets`)
+- `spill text` and `spill secrets` (scaffolded CLI; engine not wired)
 - Hand-rolled fast-export parser fallback to `git-filter-repo` for
   unusual record forms
+- Per-package enumeration in supply chain runbook (currently reports
+  blob counts only)
 
 See [`docs/superpowers/plans/2026-05-13-git-scrub.md`](docs/superpowers/plans/2026-05-13-git-scrub.md)
 for the full design. Note: that path is gitignored locally; the canonical

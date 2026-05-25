@@ -4,6 +4,10 @@
 # lines are removed. After removal, the cleanup section is applied
 # (collapse blank-line runs, strip trailing whitespace).
 #
+# All bundled patterns use the (?i) case-insensitive flag. This covers
+# the GitHub-default "Co-Authored-By:" capitalisation, lowercase
+# "co-authored-by:", and any other mixed-case variant an AI tool might emit.
+#
 # This file is config-driven on purpose: AI tools change their
 # attribution signatures often, and operators need to override or extend
 # the default set without recompiling.

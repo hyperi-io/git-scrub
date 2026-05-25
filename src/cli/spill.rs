@@ -12,11 +12,14 @@
 //!
 //! - **`spill paths <pattern>...`** — operator-supplied glob patterns; drop
 //!   matching file ops from history (same `FileMatcher` engine as `ai files`).
+//!   **v1: fully wired.**
 //! - **`spill text <file>`** — operator-supplied YAML of byte-level
 //!   replacements; rewrite blob contents anywhere they match.
+//!   **v1: scaffolded only (CLI accepts args; not part of v1 release surface).**
 //! - **`spill secrets <file>`** — same engine as `text`, but the runbook
 //!   gains a credential-rotation checklist because anything that leaked
 //!   must be considered compromised.
+//!   **v1: scaffolded only (CLI accepts args; not part of v1 release surface).**
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;

@@ -10,11 +10,16 @@
 //!
 //! Five sub-modes:
 //!
-//! - **`supply composite`** — lockfile entries + (eventually) vendored source + bundled advisories.
+//! - **`supply composite`** — lockfile entries + bundled advisories.
 //! - **`supply lockfiles`** — lockfile entries only.
 //! - **`supply packages <pkg>...`** — incident-specific list, `[<eco>:]<name>[@<ver>]` syntax.
 //! - **`supply advisories`** — apply the full bundled advisory snapshot.
 //! - **`supply patterns`** — dump the active pattern library (read-only).
+//!
+//! Supported ecosystems (v1): Cargo (`Cargo.lock`), npm (`package-lock.json`,
+//! `npm-shrinkwrap.json`), pnpm (`pnpm-lock.yaml`), yarn classic v1 (`yarn.lock`),
+//! bun text format (`bun.lock`), uv (`uv.lock`), pip (`Pipfile.lock`),
+//! poetry (`poetry.lock`), go (`go.sum`), composer (`composer.lock`).
 
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;

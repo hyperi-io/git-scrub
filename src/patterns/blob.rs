@@ -6,7 +6,11 @@
 //  License:      Apache-2.0
 //  Copyright:    (c) 2026 HYPERI PTY LIMITED
 
-//! Blob-content rewriter for the v2 `spill` use case.
+//! Blob-content rewriter for `spill text` / `spill secrets`.
+//!
+//! The CLI entry points for `spill text` and `spill secrets` are scaffolded
+//! but not wired as part of the v1 release surface. The engine infrastructure
+//! is complete and tested; the sub-commands are available but undocumented.
 //!
 //! Unlike attribution rewriting (which operates on commit messages),
 //! this rewriter applies operator-supplied substitutions to the raw byte

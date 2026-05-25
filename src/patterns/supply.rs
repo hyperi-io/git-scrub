@@ -10,9 +10,12 @@
 //!
 //! YAML at `config/patterns/supply-chain.yaml` (or operator-supplied
 //! `--config`) deserialises into `SupplyConfig`. The config drives
-//! both `LockfileRewriter` dispatch (which lockfile parsers fire on
-//! which paths) and `FileMatcher` expansion (which vendored paths
-//! to purge).
+//! `LockfileRewriter` dispatch (which lockfile parsers fire on which
+//! paths) and records vendored path templates for future use.
+//!
+//! **v1 ecosystem coverage:** Cargo, npm, pnpm, yarn (classic v1),
+//! bun (text lockfile), uv, pip (Pipfile.lock), poetry, go (go.sum),
+//! composer — ten ecosystems total.
 
 use std::collections::BTreeMap;
 

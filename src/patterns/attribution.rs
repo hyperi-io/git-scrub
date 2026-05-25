@@ -12,6 +12,11 @@
 //! applies them to commit-message bytes. Matching lines are removed; the
 //! resulting message has its blank-line runs collapsed and trailing
 //! whitespace stripped (controlled by the YAML `cleanup` block).
+//!
+//! All bundled patterns use the `(?i)` case-insensitive flag so that
+//! `Co-Authored-By:`, `co-authored-by:`, and `CO-AUTHORED-BY:` all match.
+//! Operator-supplied patterns in override files must opt in to `(?i)` themselves
+//! if case-insensitive matching is desired.
 
 use std::collections::BTreeMap;
 

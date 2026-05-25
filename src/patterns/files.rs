@@ -12,6 +12,13 @@
 //! as they appear in the `git fast-export` stream. Git's internal path
 //! representation is always `/`-separated on every platform, so a pattern
 //! like `.claude/**` matches identically on Linux, macOS, and Windows.
+//!
+//! Patterns without a leading `/` or `**/` prefix are automatically
+//! expanded to match anywhere in the path hierarchy: `.claude/**` fires
+//! on both `.claude/notes.md` (repo root) and
+//! `my-app/.claude/notes.md` (nested sub-directory). This mirrors
+//! gitignore semantics. Use a leading `/` to pin a pattern to the repo
+//! root only.
 
 use std::collections::BTreeMap;
 
