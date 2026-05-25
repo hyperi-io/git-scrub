@@ -9,11 +9,15 @@
 //! AI composite scrub against the seeded `fixtures/ai-v1` history.
 //!
 //! The fixture seeds AI artefact files under `ai-residue-app/` (e.g.
-//! `ai-residue-app/.claude/**`). The bundled patterns match paths at the
-//! repo root (`.claude/**`), so the test supplies `include_extra` globs
-//! scoped to the fixture subdirectory to exercise the file-drop path.
-//! Attribution rewriting uses the bundled YAML directly, which matches the
-//! seeded commit-message trailers regardless of path prefix.
+//! `ai-residue-app/.claude/**`) and AI attribution trailers in commit
+//! messages using both lowercase (`co-authored-by:`) and the GitHub
+//! default uppercase (`Co-Authored-By:`) form.
+//!
+//! This test uses the bundled patterns directly -- no `include_extra`
+//! workarounds. After the bug fixes:
+//!  - Attribution patterns carry `(?i)` so all capitalisation variants match.
+//!  - File patterns expand to `**/<pattern>` so nested paths like
+//!    `ai-residue-app/.claude/notes.md` are purged alongside root-level ones.
 
 use git_scrub::patterns::{
     AttributionRewriter, FileMatcher, FileMatcherOptions, attribution, discovery, files,
@@ -44,22 +48,12 @@ fn ai_composite_strips_seeded_attribution_and_artefacts() -> anyhow::Result<()> 
     let attr_cfg = attribution::parse_yaml(&attr_loaded.content)?;
     let attribution_rewriter = AttributionRewriter::new(&attr_cfg, &[])?;
 
-    // Build the file matcher from the bundled patterns PLUS fixture-scoped
-    // extras. The embedded patterns target repo-root paths (.claude/**); the
-    // fixture nests artefacts under ai-residue-app/, so we add prefixed globs
-    // via include_extra so the engine's file-drop path is fully exercised.
+    // Build the file matcher from the bundled patterns only -- no include_extra.
+    // The bundled patterns now expand to match nested paths via the `**/<pat>`
+    // sibling added at load time, so ai-residue-app/.claude/** is covered.
     let files_loaded = discovery::load(discovery::FILES_FILE, discovery::EMBEDDED_FILES, None)?;
     let files_cfg = files::parse_yaml(&files_loaded.content)?;
-    let opts = FileMatcherOptions {
-        include_extra: vec![
-            "ai-residue-app/.claude/**".to_string(),
-            "ai-residue-app/.cursor/**".to_string(),
-            "ai-residue-app/.codex/**".to_string(),
-            "ai-residue-app/.aider*".to_string(),
-        ],
-        ..Default::default()
-    };
-    let file_matcher = FileMatcher::new(&files_cfg, &opts)?;
+    let file_matcher = FileMatcher::new(&files_cfg, &FileMatcherOptions::default())?;
 
     let stats = git_scrub::engine::run(
         working.path(),
@@ -69,8 +63,8 @@ fn ai_composite_strips_seeded_attribution_and_artefacts() -> anyhow::Result<()> 
         None,
     )?;
     assert!(
-        stats.commits_rewritten >= 2,
-        "expected >=2 commits rewritten (claude commit and cursor+copilot commit had matching attribution); got {}",
+        stats.commits_rewritten >= 3,
+        "expected >=3 commits rewritten (claude, cursor+copilot, codex+aider all have matching attribution); got {}",
         stats.commits_rewritten,
     );
     assert!(
@@ -91,14 +85,13 @@ fn ai_composite_strips_seeded_attribution_and_artefacts() -> anyhow::Result<()> 
         .output()?;
     anyhow::ensure!(log.status.success(), "git log failed");
     let bodies = String::from_utf8_lossy(&log.stdout);
-    // These lines ARE matched by the bundled patterns and must be gone.
-    // (Codex/aider use uppercase Co-Authored-By which doesn't match the
-    // lowercase-only bundled patterns; cursor uses a non-standard email.
-    // The fixture intentionally tests these edge cases -- the engine strips
-    // only what the patterns match.)
+    // All these forms are now matched by the case-insensitive bundled patterns.
     let stripped = [
         "Co-Authored-By: Claude",
+        "co-authored-by: Cursor",
         "Co-authored-by: GitHub Copilot",
+        "Co-Authored-By: Codex",
+        "Co-Authored-By: aider",
         "Generated with",
     ];
     for needle in stripped {
