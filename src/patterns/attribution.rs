@@ -359,4 +359,57 @@ Co-Authored-By: Claude <noreply@anthropic.com>
             "should not contain triple newlines: {s:?}"
         );
     }
+
+    // Tests against the bundled YAML to verify case-insensitive matching.
+
+    #[test]
+    fn bundled_matches_uppercase_co_authored_by() {
+        let yaml = include_str!("../../config/patterns/ai-attribution.yaml");
+        let cfg = parse_yaml(yaml).unwrap();
+        let r = AttributionRewriter::new(&cfg, &[]).unwrap();
+        let input = b"feat: thing\n\nCo-Authored-By: Claude <noreply@anthropic.com>\n";
+        let (out, dropped) = r.apply_with_drop_count(input);
+        assert!(
+            dropped >= 1,
+            "Co-Authored-By (GitHub default form) must be dropped; got dropped={dropped}, out={}",
+            String::from_utf8_lossy(&out)
+        );
+        let out_str = String::from_utf8_lossy(&out);
+        assert!(
+            !out_str.contains("Co-Authored-By: Claude"),
+            "uppercase trailer must not survive in output"
+        );
+    }
+
+    #[test]
+    fn bundled_matches_mixed_case_co_authored_by() {
+        let yaml = include_str!("../../config/patterns/ai-attribution.yaml");
+        let cfg = parse_yaml(yaml).unwrap();
+        let r = AttributionRewriter::new(&cfg, &[]).unwrap();
+        // lowercase + SHOUTCASE both seeded as attribution
+        let input =
+            b"feat: thing\n\nco-authored-by: Cursor <cursoragent@cursor.com>\nCO-AUTHORED-BY: Claude <noreply@anthropic.com>\n";
+        let (_, dropped) = r.apply_with_drop_count(input);
+        assert_eq!(
+            dropped, 2,
+            "both lowercase co-authored-by and SHOUTCASE CO-AUTHORED-BY must match"
+        );
+    }
+
+    #[test]
+    fn bundled_matches_uppercase_codex_trailer() {
+        // The fixture seeds: Co-Authored-By: Codex <noreply@openai.com>
+        // The bundled patterns now use (?i) so this must match regardless of case.
+        let yaml = include_str!("../../config/patterns/ai-attribution.yaml");
+        let cfg = parse_yaml(yaml).unwrap();
+        let r = AttributionRewriter::new(&cfg, &[]).unwrap();
+        assert!(
+            r.line_matches(b"Co-Authored-By: Codex <noreply@openai.com>"),
+            "uppercase Co-Authored-By: Codex must be matched"
+        );
+        assert!(
+            r.line_matches(b"Co-Authored-By: aider <noreply@aider.chat>"),
+            "uppercase Co-Authored-By: aider must be matched"
+        );
+    }
 }
