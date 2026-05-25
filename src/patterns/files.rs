@@ -81,14 +81,12 @@ impl FileMatcher {
                 continue;
             }
             for p in pats {
-                let glob = compile_glob("purge", tool, p)?;
-                purge_builder.add(glob);
+                add_with_nested_expansion(&mut purge_builder, "purge", tool, p)?;
             }
         }
 
         for extra in &opts.include_extra {
-            let glob = compile_glob("include_extra", "<cli>", extra)?;
-            purge_builder.add(glob);
+            add_with_nested_expansion(&mut purge_builder, "include_extra", "<cli>", extra)?;
         }
 
         let purge = purge_builder
@@ -141,6 +139,40 @@ impl FileMatcher {
         }
         self.purge.is_match(path)
     }
+}
+
+/// Add a glob pattern to `builder`, also adding a `**/<pattern>` sibling so
+/// the pattern matches anywhere in the path hierarchy, not just at the root.
+///
+/// Expansion rules (mirrors gitignore semantics):
+/// - If `pattern` already starts with `**/`, it already matches anywhere --
+///   only the original pattern is added.
+/// - If `pattern` starts with `/`, the leading `/` is stripped and only the
+///   root-anchored form is added (explicit root-only request).
+/// - Otherwise both `pattern` and `**/<pattern>` are added so the pattern
+///   fires whether the directory appears at the repo root or nested under a
+///   sub-project (e.g. `.claude/**` matches both `.claude/foo` and
+///   `my-app/.claude/foo`).
+fn add_with_nested_expansion(
+    builder: &mut GlobSetBuilder,
+    section: &'static str,
+    tool: &str,
+    pattern: &str,
+) -> Result<(), FileError> {
+    if pattern.starts_with("**/") {
+        // Already anchored to match anywhere -- just add as-is.
+        builder.add(compile_glob(section, tool, pattern)?);
+    } else if let Some(root_only) = pattern.strip_prefix('/') {
+        // Explicit root-only anchor -- strip the slash and add once.
+        builder.add(compile_glob(section, tool, root_only)?);
+    } else {
+        // Add the original pattern (matches at repo root) plus the
+        // `**/` prefix form (matches anywhere in the tree).
+        builder.add(compile_glob(section, tool, pattern)?);
+        let nested = format!("**/{pattern}");
+        builder.add(compile_glob(section, tool, &nested)?);
+    }
+    Ok(())
 }
 
 fn compile_glob(section: &'static str, tool: &str, pattern: &str) -> Result<Glob, FileError> {
@@ -239,5 +271,66 @@ exclude_by_default:
             .insert("bad".to_string(), vec!["[unclosed".to_string()]);
         let err = FileMatcher::new(&cfg, &FileMatcherOptions::default()).unwrap_err();
         assert!(matches!(err, FileError::InvalidGlob { .. }));
+    }
+
+    // Tests for nested-path matching using the bundled YAML.
+
+    #[test]
+    fn bundled_matches_nested_claude_directory_under_subapp() {
+        let yaml = include_str!("../../config/patterns/ai-files.yaml");
+        let cfg = parse_yaml(yaml).unwrap();
+        let m = FileMatcher::new(&cfg, &FileMatcherOptions::default()).unwrap();
+        // Root-level match must still work.
+        assert!(
+            m.should_purge(".claude/notes.md"),
+            ".claude/ at root must match"
+        );
+        // Nested match: the fixture seeds paths like ai-residue-app/.claude/notes.md.
+        assert!(
+            m.should_purge("ai-residue-app/.claude/notes.md"),
+            ".claude/ nested under a sub-app must also match"
+        );
+        assert!(
+            m.should_purge("crates/foo/.cursor/state.json"),
+            ".cursor/ nested under a sub-crate must match"
+        );
+    }
+
+    #[test]
+    fn bundled_does_not_match_files_with_tool_name_in_filename_only() {
+        let yaml = include_str!("../../config/patterns/ai-files.yaml");
+        let cfg = parse_yaml(yaml).unwrap();
+        let m = FileMatcher::new(&cfg, &FileMatcherOptions::default()).unwrap();
+        // A file whose name contains "claude" but is NOT under a .claude/ directory
+        // must NOT be purged by the directory-glob patterns.
+        assert!(
+            !m.should_purge("docs/about-claude.md"),
+            "docs/about-claude.md is not under .claude/ -- must not match"
+        );
+        assert!(
+            !m.should_purge("src/cursor_helper.rs"),
+            "src/cursor_helper.rs is not under .cursor/ -- must not match"
+        );
+    }
+
+    #[test]
+    fn root_only_pattern_does_not_match_nested() {
+        // Patterns starting with '/' should be root-only (no expansion).
+        let yaml = r"
+purge:
+  test:
+    - '/.only-at-root/**'
+exclude_by_default: []
+";
+        let cfg = parse_yaml(yaml).unwrap();
+        let m = FileMatcher::new(&cfg, &FileMatcherOptions::default()).unwrap();
+        assert!(
+            m.should_purge(".only-at-root/file.txt"),
+            "root-only pattern with leading / must match at root (slash stripped)"
+        );
+        assert!(
+            !m.should_purge("nested/.only-at-root/file.txt"),
+            "root-only pattern must NOT match when nested"
+        );
     }
 }
