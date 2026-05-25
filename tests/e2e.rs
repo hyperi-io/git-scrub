@@ -46,4 +46,7 @@ mod e2e {
     pub mod supply_yarn;
     // Phase 17: clean umbrella subcommand.
     pub mod clean_combined;
+    // Phase 19: AI and spill-paths fixture e2e tests.
+    pub mod ai_composite;
+    pub mod spill_paths;
 }
