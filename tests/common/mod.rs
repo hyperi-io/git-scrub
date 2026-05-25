@@ -593,7 +593,13 @@ fn clone_to_cache(url: &str) -> anyhow::Result<PathBuf> {
     let staging = cache.join(format!("{slug}.staging.{pid}"));
     let _ = std::fs::remove_dir_all(&staging);
     let status = Command::new("git")
-        .args(["clone", "--quiet", "--", url, &staging.display().to_string()])
+        .args([
+            "clone",
+            "--quiet",
+            "--",
+            url,
+            &staging.display().to_string(),
+        ])
         .status()?;
     anyhow::ensure!(status.success(), "git clone failed for {url}");
 
