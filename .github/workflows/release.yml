@@ -1,0 +1,276 @@
+# Project:   git-scrub
+# File:      .github/workflows/release.yml
+# Purpose:   Semantic release workflow with multi-platform binary build and packaging
+# Language:  YAML (GitHub Actions)
+#
+# License:   Apache-2.0
+# Copyright: (c) 2026 HYPERI PTY LIMITED
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Build Linux binaries (amd64 native + arm64 via cross)
+  # -------------------------------------------------------------------------
+  build-linux:
+    name: Build Linux binaries
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cross
+        run: cargo install cross --locked
+
+      - name: Build linux-amd64 (native)
+        run: |
+          cargo build --release --target x86_64-unknown-linux-gnu
+          mkdir -p dist
+          cp target/x86_64-unknown-linux-gnu/release/git-scrub dist/git-scrub-linux-amd64
+
+      - name: Build linux-arm64 (via cross)
+        run: |
+          cross build --release --target aarch64-unknown-linux-gnu
+          cp target/aarch64-unknown-linux-gnu/release/git-scrub dist/git-scrub-linux-arm64
+
+      - name: Upload linux binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-binaries
+          path: |
+            dist/git-scrub-linux-amd64
+            dist/git-scrub-linux-arm64
+          retention-days: 1
+
+  # -------------------------------------------------------------------------
+  # Build macOS binaries (amd64 + arm64, both natively on macos-latest)
+  # -------------------------------------------------------------------------
+  build-macos:
+    name: Build macOS binaries
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build darwin-amd64
+        run: |
+          cargo build --release --target x86_64-apple-darwin
+          mkdir -p dist
+          cp target/x86_64-apple-darwin/release/git-scrub dist/git-scrub-darwin-amd64
+
+      - name: Build darwin-arm64
+        run: |
+          cargo build --release --target aarch64-apple-darwin
+          cp target/aarch64-apple-darwin/release/git-scrub dist/git-scrub-darwin-arm64
+
+      - name: Upload macOS binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-binaries
+          path: |
+            dist/git-scrub-darwin-amd64
+            dist/git-scrub-darwin-arm64
+          retention-days: 1
+
+  # -------------------------------------------------------------------------
+  # Release: semantic-release + nFPM packaging + brew formula + publish
+  # -------------------------------------------------------------------------
+  release:
+    name: Semantic Release
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    needs: [build-linux, build-macos]
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Install semantic-release
+        run: npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/exec
+
+      - name: Install Go (for nFPM)
+        uses: actions/setup-go@v5
+        with:
+          go-version: ">=1.22"
+          cache: false
+
+      - name: Install nFPM
+        run: |
+          go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
+          nfpm --version
+
+      # Download artefacts from the build jobs
+      - name: Download linux binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-binaries
+          path: dist/
+
+      - name: Download macOS binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-binaries
+          path: dist/
+
+      - name: Make binaries executable
+        run: chmod +x dist/git-scrub-*
+
+      # Dry-run to determine the next version before we need it
+      - name: Get next version
+        id: version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEXT_VERSION=$(npx semantic-release --dry-run 2>&1 \
+            | grep -oE 'next release version is [0-9]+\.[0-9]+\.[0-9]+' \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+
+          if [ -z "$NEXT_VERSION" ]; then
+            NEXT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "dev")
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Next version: $NEXT_VERSION"
+
+      # Create tar.gz archives and checksums.txt
+      - name: Create tar.gz archives
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          cd dist
+
+          for binary in git-scrub-linux-amd64 git-scrub-linux-arm64 git-scrub-darwin-amd64 git-scrub-darwin-arm64; do
+            # Extract platform from binary name (strip "git-scrub-" prefix)
+            platform=${binary#git-scrub-}
+            archive_dir="git-scrub-${VERSION}-${platform}"
+            mkdir -p "$archive_dir"
+            cp "$binary" "${archive_dir}/git-scrub"
+            cp ../README.md "${archive_dir}/"
+            tar czf "git-scrub-${VERSION}-${platform}.tar.gz" "$archive_dir"
+            rm -rf "$archive_dir"
+            sha256sum "git-scrub-${VERSION}-${platform}.tar.gz" >> checksums.txt
+          done
+
+          echo "Archives created:"
+          ls -lh git-scrub-*.tar.gz checksums.txt
+          cat checksums.txt
+
+      # Build .deb and .rpm packages via nFPM
+      - name: Build Linux packages (deb/rpm)
+        if: steps.version.outputs.release_needed == 'true'
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          chmod +x packaging/scripts/*.sh
+
+          # amd64 packages
+          export GOARCH=amd64
+          export VERSION="$VERSION"
+          envsubst < packaging/nfpm.yaml > /tmp/nfpm-amd64.yaml
+          nfpm package --packager deb --config /tmp/nfpm-amd64.yaml --target dist/
+          nfpm package --packager rpm --config /tmp/nfpm-amd64.yaml --target dist/
+
+          # arm64 packages
+          export GOARCH=arm64
+          envsubst < packaging/nfpm.yaml > /tmp/nfpm-arm64.yaml
+          nfpm package --packager deb --config /tmp/nfpm-arm64.yaml --target dist/
+          nfpm package --packager rpm --config /tmp/nfpm-arm64.yaml --target dist/
+
+          echo "Packages created:"
+          ls -lh dist/*.deb dist/*.rpm
+
+      # Generate the Homebrew formula from the template
+      - name: Generate Homebrew formula
+        if: steps.version.outputs.release_needed == 'true'
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+          cd dist
+
+          SHA256_DARWIN_AMD64=$(grep "darwin-amd64" checksums.txt | cut -d' ' -f1)
+          SHA256_DARWIN_ARM64=$(grep "darwin-arm64" checksums.txt | cut -d' ' -f1)
+          SHA256_LINUX_AMD64=$(grep  "linux-amd64"  checksums.txt | cut -d' ' -f1)
+          SHA256_LINUX_ARM64=$(grep  "linux-arm64"  checksums.txt | cut -d' ' -f1)
+
+          sed -e "s/\${VERSION}/$VERSION/g" \
+              -e "s/\${SHA256_DARWIN_AMD64}/$SHA256_DARWIN_AMD64/g" \
+              -e "s/\${SHA256_DARWIN_ARM64}/$SHA256_DARWIN_ARM64/g" \
+              -e "s/\${SHA256_LINUX_AMD64}/$SHA256_LINUX_AMD64/g" \
+              -e "s/\${SHA256_LINUX_ARM64}/$SHA256_LINUX_ARM64/g" \
+              ../packaging/homebrew/git-scrub.rb > git-scrub.rb
+
+          echo "Generated formula:"
+          cat git-scrub.rb
+
+      # Run semantic-release -- creates the GH Release and attaches artefacts
+      - name: Run semantic-release
+        if: steps.version.outputs.release_needed == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release
+
+      # Publish formula to homebrew-git-scrub tap (gated; skips if secrets absent)
+      - name: Generate GitHub App token for tap repo
+        if: >-
+          steps.version.outputs.release_needed == 'true' &&
+          secrets.HOMEBREW_APP_ID != ''
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.HOMEBREW_APP_ID }}
+          private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
+          owner: hyperi-io
+          repositories: homebrew-git-scrub
+
+      - name: Publish Homebrew formula to tap
+        if: >-
+          steps.version.outputs.release_needed == 'true' &&
+          secrets.HOMEBREW_APP_ID != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          VERSION=${{ steps.version.outputs.version }}
+
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/hyperi-io/homebrew-git-scrub.git" /tmp/homebrew-git-scrub
+
+          mkdir -p /tmp/homebrew-git-scrub/Formula
+          cp dist/git-scrub.rb /tmp/homebrew-git-scrub/Formula/git-scrub.rb
+
+          cd /tmp/homebrew-git-scrub
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/git-scrub.rb
+          git commit -m "Update git-scrub to ${VERSION}"
+          git push

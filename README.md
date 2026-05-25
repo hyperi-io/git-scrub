@@ -124,21 +124,21 @@ in the runbook — install and `gh auth login` to unlock those sections.
 
 ## Distribution
 
-Planned channels (none shipping yet):
-
 | Channel | Platform | Status |
 |---|---|---|
-| `cargo install git-scrub` | Linux / macOS / Windows | planned for v1 |
-| Homebrew tap (`brew install hyperi-io/git-scrub/git-scrub`) | macOS / Linux | planned for v1.x |
-| `.deb` via `cargo-deb` | Debian / Ubuntu | planned for v1.x |
-| `.rpm` via `cargo-generate-rpm` | Fedora / RHEL | planned for v1.x |
-| winget manifest | Windows | planned for v1.x |
-| Scoop bucket entry | Windows | planned for v1.x |
-| Chocolatey package | Windows | planned for v1.x |
-| Curl / PowerShell installer scripts | all | planned for v1.x |
+| `curl ... \| sh` installer | Linux / macOS | scaffolded (ships at first release) |
+| Homebrew tap (`brew install hyperi-io/git-scrub/git-scrub`) | macOS / Linux | scaffolded (ships at first release) |
+| `.deb` via nFPM | Debian / Ubuntu | scaffolded (ships at first release) |
+| `.rpm` via nFPM | Fedora / RHEL | scaffolded (ships at first release) |
+| `.apk` via nFPM | Alpine | scaffolded (ships at first release) |
+| `cargo install git-scrub` | Linux / macOS / Windows | planned for v1.x |
+| winget / Scoop / Chocolatey | Windows | planned for v1.x |
 
-v1 ships `cargo install` only. Native packages follow once the binary
-surface stabilises.
+Install via the curl installer once the first release tag exists:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hyperi-io/git-scrub/main/packaging/install.sh | sh
+```
 
 ## Building from source
 

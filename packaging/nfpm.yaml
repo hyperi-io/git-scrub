@@ -1,0 +1,53 @@
+# Project:   git-scrub
+# File:      packaging/nfpm.yaml
+# Purpose:   nFPM configuration for building deb/rpm/apk packages
+# Language:  YAML
+#
+# License:   Apache-2.0
+# Copyright: (c) 2026 HYPERI PTY LIMITED
+
+# nFPM configuration - https://nfpm.goreleaser.com/
+name: git-scrub
+arch: "${GOARCH}"
+platform: linux
+version: "${VERSION}"
+version_schema: semver
+
+maintainer: "HyperI <support@hyperi.io>"
+description: |
+  git-scrub - surgical removal of unwanted content from git history.
+  Removes AI tool residue (attribution trailers + artefact files),
+  supply chain lockfile entries from 10 ecosystems, and operator-
+  supplied paths from a repository's entire history.
+vendor: "HYPERI PTY LIMITED"
+homepage: "https://github.com/hyperi-io/git-scrub"
+license: "Apache-2.0"
+section: devel
+priority: optional
+
+# Package contents
+contents:
+  - src: ./dist/git-scrub-linux-${GOARCH}
+    dst: /usr/bin/git-scrub
+    file_info:
+      mode: 0755
+
+# Scripts
+scripts:
+  postinstall: ./packaging/scripts/postinstall.sh
+  preremove: ./packaging/scripts/preremove.sh
+
+# RPM-specific settings
+rpm:
+  group: Development/Tools
+  summary: Surgical removal of unwanted content from git history
+  compression: xz
+
+# Deb-specific settings
+deb:
+  compression: xz
+
+# APK-specific settings (Alpine Linux)
+apk:
+  signature:
+    key_file: ""  # No signing by default
