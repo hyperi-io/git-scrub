@@ -129,7 +129,13 @@ jobs:
           node-version: "lts/*"
 
       - name: Install semantic-release
-        run: npm install -g semantic-release @semantic-release/changelog @semantic-release/git @semantic-release/exec
+        run: |
+          npm install -g \
+            semantic-release \
+            @semantic-release/changelog \
+            @semantic-release/git \
+            @semantic-release/exec \
+            conventional-changelog-conventionalcommits
 
       - name: Install Go (for nFPM)
         uses: actions/setup-go@v5
@@ -180,6 +186,7 @@ jobs:
 
       # Create tar.gz archives and checksums.txt
       - name: Create tar.gz archives
+        if: steps.version.outputs.release_needed == 'true'
         run: |
           VERSION=${{ steps.version.outputs.version }}
           cd dist
