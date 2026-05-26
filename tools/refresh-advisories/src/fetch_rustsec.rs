@@ -324,7 +324,7 @@ mod tests {
         let inverted = invert_patched_ranges(&[
             ">= 2.0.1".to_string(),
             ">= 1.2.3".to_string(),
-            ">= 1.2.3".to_string(),  // duplicate
+            ">= 1.2.3".to_string(), // duplicate
         ]);
         assert_eq!(inverted, vec!["< 1.2.3", "< 2.0.1"]);
     }
