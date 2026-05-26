@@ -121,8 +121,10 @@ fn parse_advisory_file(path: &Path) -> Result<Option<NormalisedAdvisory>> {
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    // `[versions].patched` lists the fixed version ranges. We record them as-is
-    // in v1; accurate inversion to the compromised range is v1.x work.
+    // `[versions].patched` lists the FIX ranges. git-scrub's `versions:` field
+    // means COMPROMISED ranges, so we invert each patched expression before
+    // storing. Without inversion the matcher treats patched (safe) versions
+    // as compromised and misses the actual vulnerable ones.
     let patched: Vec<String> = parsed
         .get("versions")
         .and_then(|v| v.get("patched"))
@@ -137,7 +139,7 @@ fn parse_advisory_file(path: &Path) -> Result<Option<NormalisedAdvisory>> {
     let versions = if patched.is_empty() {
         vec!["*".to_string()]
     } else {
-        patched.clone()
+        invert_patched_ranges(&patched)
     };
 
     let raw_patched = parsed
@@ -156,6 +158,63 @@ fn parse_advisory_file(path: &Path) -> Result<Option<NormalisedAdvisory>> {
             "Imported from RustSec (raw patched range: {raw_patched})"
         )),
     }))
+}
+
+/// Invert a list of "patched" SemVer ranges into a list of "compromised"
+/// SemVer ranges.
+///
+/// RustSec advisories specify which versions are FIXED. git-scrub's matcher
+/// wants COMPROMISED versions. The relationship is:
+///
+/// - `patched = [">= 1.2.3"]` → compromised = `< 1.2.3`
+/// - `patched = [">= 1.2.3, < 2.0.0"]` → compromised = `< 1.2.3` (we keep
+///   only the lower bound; the upper bound implies versions ≥ 2.0.0 may be
+///   re-vulnerable, but RustSec advisories that span branches issue
+///   separate `patched` entries for each branch)
+/// - `patched = [">= 1.2.3", ">= 2.0.1"]` (multiple branches) →
+///   compromised = `< 1.2.3` joined with `>= 2.0.0, < 2.0.1` etc.
+///   For v1 we emit `< 1.2.3` from the first branch and trust that
+///   maintainers re-emit advisories per branch.
+///
+/// Handled operators: `>=`, `>`. Comma-separated sub-clauses (multi-bound
+/// ranges) are tolerated; we extract the LOWER bound and invert it.
+/// Patched ranges we can't parse fall back to `"*"` (match all versions).
+fn invert_patched_ranges(patched: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = Vec::new();
+    for range in patched {
+        if let Some(inverted) = invert_single_range(range) {
+            out.push(inverted);
+        }
+    }
+    if out.is_empty() {
+        // Couldn't invert any branch — record "*" so the operator at least
+        // sees the advisory and can refine via `--config`.
+        out.push("*".to_string());
+    }
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// Invert a single comma-separated patched range. Picks the lower-bound
+/// comparator and flips its operator.
+///
+/// - `">= 1.2.3"` → `"< 1.2.3"`
+/// - `"> 1.2.3"` → `"<= 1.2.3"`
+/// - `">= 1.2.3, < 2.0.0"` → `"< 1.2.3"` (lower bound only)
+/// - `"< 1.2.3"` (rare; reverse range) → `None` (can't sensibly invert)
+fn invert_single_range(range: &str) -> Option<String> {
+    let lower_bound = range
+        .split(',')
+        .map(str::trim)
+        .find(|clause| clause.starts_with(">=") || clause.starts_with('>'))?;
+    if let Some(rest) = lower_bound.strip_prefix(">=") {
+        Some(format!("< {}", rest.trim()))
+    } else if let Some(rest) = lower_bound.strip_prefix('>') {
+        Some(format!("<= {}", rest.trim()))
+    } else {
+        None
+    }
 }
 
 /// Extract front-matter TOML from a RustSec advisory file.
@@ -204,7 +263,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_advisory_file_from_tempfile() {
+    fn parse_advisory_file_inverts_patched_range() {
         let tmp = tempfile::NamedTempFile::with_suffix(".md").unwrap();
         std::fs::write(
             tmp.path(),
@@ -216,7 +275,8 @@ mod tests {
         assert_eq!(adv.advisory_id, "RUSTSEC-2024-0099");
         assert_eq!(adv.name, "test-crate");
         assert_eq!(adv.ecosystem, "cargo");
-        assert_eq!(adv.versions, vec![">= 1.2.0"]);
+        // `>= 1.2.0` (patched) inverts to `< 1.2.0` (compromised).
+        assert_eq!(adv.versions, vec!["< 1.2.0"]);
     }
 
     #[test]
@@ -228,7 +288,53 @@ mod tests {
         )
         .unwrap();
         let adv = parse_advisory_file(tmp.path()).unwrap().unwrap();
+        // No patched range = entire package compromised.
         assert_eq!(adv.versions, vec!["*"]);
+    }
+
+    #[test]
+    fn invert_single_geq() {
+        assert_eq!(invert_single_range(">= 1.2.3"), Some("< 1.2.3".to_string()));
+    }
+
+    #[test]
+    fn invert_single_gt() {
+        assert_eq!(invert_single_range("> 1.2.3"), Some("<= 1.2.3".to_string()));
+    }
+
+    #[test]
+    fn invert_multi_clause_uses_lower_bound() {
+        // Multi-clause range like ">= 1.2.3, < 2.0.0" inverts to just the
+        // lower bound. The upper bound implies a branch-specific patch which
+        // RustSec issues as a separate advisory entry per branch.
+        assert_eq!(
+            invert_single_range(">= 1.2.3, < 2.0.0"),
+            Some("< 1.2.3".to_string()),
+        );
+    }
+
+    #[test]
+    fn invert_no_lower_bound_returns_none() {
+        // Pure upper-bound range can't be sensibly inverted in v1.
+        assert_eq!(invert_single_range("< 1.2.3"), None);
+    }
+
+    #[test]
+    fn invert_patched_ranges_dedupes_and_sorts() {
+        let inverted = invert_patched_ranges(&[
+            ">= 2.0.1".to_string(),
+            ">= 1.2.3".to_string(),
+            ">= 1.2.3".to_string(),  // duplicate
+        ]);
+        assert_eq!(inverted, vec!["< 1.2.3", "< 2.0.1"]);
+    }
+
+    #[test]
+    fn invert_unparseable_falls_back_to_star() {
+        // If every patched clause is unparseable, fall back to `*` so the
+        // operator at least sees the advisory and can refine.
+        let inverted = invert_patched_ranges(&["random garbage".to_string()]);
+        assert_eq!(inverted, vec!["*"]);
     }
 
     #[test]
