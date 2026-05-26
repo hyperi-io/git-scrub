@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/hyperi-io/git-scrub/compare/v1.0.0...v1.0.1) (2026-05-26)
+
+
+### Bug Fixes
+
+* **release:** add @semantic-release/github so GH Release + assets are published ([12f0976](https://github.com/hyperi-io/git-scrub/commit/12f09763a2c1c8a0cc878cef43f4190ea8eaf4c0))
+
 # 1.0.0 (2026-05-26)
 
 
