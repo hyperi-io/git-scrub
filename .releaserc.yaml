@@ -79,3 +79,25 @@ plugins:
     - VERSION
     - Cargo.toml
     message: 'chore: version ${nextRelease.version} [skip ci]'
+- - '@semantic-release/github'
+  - assets:
+    - path: dist/git-scrub-*-linux-amd64.tar.gz
+      label: git-scrub-linux-amd64.tar.gz
+    - path: dist/git-scrub-*-linux-arm64.tar.gz
+      label: git-scrub-linux-arm64.tar.gz
+    - path: dist/git-scrub-*-darwin-amd64.tar.gz
+      label: git-scrub-darwin-amd64.tar.gz
+    - path: dist/git-scrub-*-darwin-arm64.tar.gz
+      label: git-scrub-darwin-arm64.tar.gz
+    - path: dist/git-scrub_*_amd64.deb
+      label: git-scrub-amd64.deb
+    - path: dist/git-scrub_*_arm64.deb
+      label: git-scrub-arm64.deb
+    - path: dist/git-scrub-*.x86_64.rpm
+      label: git-scrub-x86_64.rpm
+    - path: dist/git-scrub-*.aarch64.rpm
+      label: git-scrub-aarch64.rpm
+    - path: dist/git-scrub.rb
+      label: git-scrub.rb (Homebrew formula)
+    - path: dist/checksums.txt
+      label: checksums.txt

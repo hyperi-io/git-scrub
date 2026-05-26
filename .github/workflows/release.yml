@@ -135,6 +135,7 @@ jobs:
             @semantic-release/changelog \
             @semantic-release/git \
             @semantic-release/exec \
+            @semantic-release/github \
             conventional-changelog-conventionalcommits
 
       - name: Install Go (for nFPM)
