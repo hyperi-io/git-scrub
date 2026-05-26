@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/hyperi-io/git-scrub/compare/v1.0.1...v1.0.2) (2026-05-26)
+
+
+### Bug Fixes
+
+* **refresh-advisories:** invert patched ranges + populate snapshot with 832 RustSec entries ([c7d7f14](https://github.com/hyperi-io/git-scrub/commit/c7d7f1458638e8332a8f18d7d9d32a7515194b6d))
+
 ## [1.0.1](https://github.com/hyperi-io/git-scrub/compare/v1.0.0...v1.0.1) (2026-05-26)
 
 
