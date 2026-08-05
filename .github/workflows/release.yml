@@ -21,7 +21,7 @@ jobs:
     name: Build Linux binaries
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -53,7 +53,7 @@ jobs:
           cp target/aarch64-unknown-linux-gnu/release/git-scrub dist/git-scrub-linux-arm64
 
       - name: Upload linux binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-binaries
           path: |
@@ -68,7 +68,7 @@ jobs:
     name: Build macOS binaries
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -92,7 +92,7 @@ jobs:
           cp target/aarch64-apple-darwin/release/git-scrub dist/git-scrub-darwin-arm64
 
       - name: Upload macOS binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-binaries
           path: |
@@ -118,13 +118,13 @@ jobs:
     env:
       HOMEBREW_APP_ID: ${{ secrets.HOMEBREW_APP_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "lts/*"
 
@@ -139,7 +139,7 @@ jobs:
             conventional-changelog-conventionalcommits
 
       - name: Install Go (for nFPM)
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: ">=1.22"
           cache: false
@@ -151,13 +151,13 @@ jobs:
 
       # Download artefacts from the build jobs
       - name: Download linux binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-binaries
           path: dist/
 
       - name: Download macOS binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: macos-binaries
           path: dist/

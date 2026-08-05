@@ -1,0 +1,7 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "Inherits the org preset: 7-day supply-chain cooldown on external dependencies, same-org and CVE bypasses, PR-only, grouped updates, and SHA-pinning for GitHub Actions (helpers:pinGitHubActionDigests converts tag-pinned actions to commit SHAs).",
+  "extends": [
+    "github>hyperi-io/renovate-config"
+  ]
+}
