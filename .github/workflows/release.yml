@@ -33,10 +33,12 @@ jobs:
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      - name: Install aarch64 cross-linker
+      # build-essential supplies the host `cc` that build scripts link with; the
+      # org default runner image does not carry one.
+      - name: Install host C toolchain and aarch64 cross-linker
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu
+          sudo apt-get install -y build-essential gcc-aarch64-linux-gnu
 
       - name: Build linux-amd64 (native)
         run: |
@@ -111,12 +113,6 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    # Job-level env so `if:` expressions can reference these as `env.*`.
-    # GitHub Actions forbids `secrets.*` directly inside `if:`; the indirection
-    # via env is the supported pattern for conditional steps that need to skip
-    # when a secret isn't configured.
-    env:
-      HOMEBREW_APP_ID: ${{ secrets.HOMEBREW_APP_ID }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -260,36 +256,40 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: semantic-release
 
-      # Publish formula to homebrew-git-scrub tap (gated; skips if secrets absent)
-      - name: Generate GitHub App token for tap repo
+      # Publish the formula to the shared hyperi-io tap, the same way macbash
+      # does. HOMEBREW_APP_* is the org-wide credential of the app installed on
+      # the tap; a fork without it skips these two steps.
+      - name: Mint homebrew-tap token
         if: >-
           steps.version.outputs.release_needed == 'true' &&
-          env.HOMEBREW_APP_ID != ''
-        id: app-token
+          vars.HOMEBREW_APP_CLIENT_ID != ''
+        id: tap-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           client-id: ${{ vars.HOMEBREW_APP_CLIENT_ID }}
           private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
           owner: hyperi-io
-          repositories: homebrew-git-scrub
+          repositories: homebrew-tap
 
-      - name: Publish Homebrew formula to tap
+      - name: Push formula to homebrew-tap
         if: >-
           steps.version.outputs.release_needed == 'true' &&
-          env.HOMEBREW_APP_ID != ''
+          vars.HOMEBREW_APP_CLIENT_ID != ''
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.tap-token.outputs.token }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-
-          git clone "https://x-access-token:${GH_TOKEN}@github.com/hyperi-io/homebrew-git-scrub.git" /tmp/homebrew-git-scrub
-
-          mkdir -p /tmp/homebrew-git-scrub/Formula
-          cp dist/git-scrub.rb /tmp/homebrew-git-scrub/Formula/git-scrub.rb
-
-          cd /tmp/homebrew-git-scrub
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/git-scrub.rb
-          git commit -m "Update git-scrub to ${VERSION}"
-          git push
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/hyperi-io/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp dist/git-scrub.rb tap/Formula/git-scrub.rb
+          cd tap
+          git config user.name "hyperi-bot"
+          git config user.email "bot@hyperi.io"
+          if git diff --quiet -- Formula/git-scrub.rb && git ls-files --error-unmatch Formula/git-scrub.rb >/dev/null 2>&1; then
+            echo "homebrew-tap: git-scrub.rb unchanged for ${VERSION}"
+          else
+            git add Formula/git-scrub.rb
+            git commit -m "git-scrub ${VERSION}"
+            git push origin HEAD
+          fi
