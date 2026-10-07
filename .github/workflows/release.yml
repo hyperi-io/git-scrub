@@ -13,17 +13,80 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  SEMANTIC_RELEASE_PACKAGES: >-
+    semantic-release
+    @semantic-release/changelog
+    @semantic-release/git
+    @semantic-release/exec
+    @semantic-release/github
+    conventional-changelog-conventionalcommits
+
 jobs:
+  # -------------------------------------------------------------------------
+  # Next version: computed before the build so the binaries carry it
+  # -------------------------------------------------------------------------
+  version:
+    name: Next version
+    runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      version: ${{ steps.next.outputs.version }}
+      release_needed: ${{ steps.next.outputs.release_needed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "lts/*"
+
+      - name: Install semantic-release
+        run: |
+          read -ra packages <<< "$SEMANTIC_RELEASE_PACKAGES"
+          npm install -g "${packages[@]}"
+
+      - name: Get next version
+        id: next
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NEXT_VERSION=$(npx semantic-release --dry-run 2>&1 \
+            | grep -oE 'next release version is [0-9]+\.[0-9]+\.[0-9]+' \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "")
+
+          if [ -z "$NEXT_VERSION" ]; then
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+            echo "No release needed"
+          else
+            echo "release_needed=true" >> "$GITHUB_OUTPUT"
+            echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
+            echo "Next version: $NEXT_VERSION"
+          fi
+
   # -------------------------------------------------------------------------
   # Build Linux binaries (amd64 native + arm64 via cross)
   # -------------------------------------------------------------------------
   build-linux:
     name: Build Linux binaries
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
+    needs: version
+    if: needs.version.outputs.release_needed == 'true'
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Stamp release version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: python3 packaging/scripts/stamp-version.py "$VERSION"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -69,10 +132,17 @@ jobs:
   build-macos:
     name: Build macOS binaries
     runs-on: macos-latest
+    needs: version
+    if: needs.version.outputs.release_needed == 'true'
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+
+      - name: Stamp release version
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: python3 packaging/scripts/stamp-version.py "$VERSION"
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -108,11 +178,14 @@ jobs:
   release:
     name: Semantic Release
     runs-on: ${{ vars.GH_RUNNER_DEFAULT || 'ubuntu-latest' }}
-    needs: [build-linux, build-macos]
+    needs: [version, build-linux, build-macos]
+    if: needs.version.outputs.release_needed == 'true'
     permissions:
       contents: write
       issues: write
       pull-requests: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -126,13 +199,14 @@ jobs:
 
       - name: Install semantic-release
         run: |
-          npm install -g \
-            semantic-release \
-            @semantic-release/changelog \
-            @semantic-release/git \
-            @semantic-release/exec \
-            @semantic-release/github \
-            conventional-changelog-conventionalcommits
+          read -ra packages <<< "$SEMANTIC_RELEASE_PACKAGES"
+          npm install -g "${packages[@]}"
+
+      # envsubst renders the nFPM config; the org default runner image does not carry it.
+      - name: Install envsubst
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gettext-base
 
       - name: Install Go (for nFPM)
         uses: actions/setup-go@v7
@@ -161,31 +235,19 @@ jobs:
       - name: Make binaries executable
         run: chmod +x dist/git-scrub-*
 
-      # Dry-run to determine the next version before we need it
-      - name: Get next version
-        id: version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The formula's test asserts the version, so a binary that reports another one must not ship.
+      - name: Check the binary reports the release version
         run: |
-          NEXT_VERSION=$(npx semantic-release --dry-run 2>&1 \
-            | grep -oE 'next release version is [0-9]+\.[0-9]+\.[0-9]+' \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' || echo "")
-
-          if [ -z "$NEXT_VERSION" ]; then
-            NEXT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo "dev")
-            echo "release_needed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "release_needed=true" >> "$GITHUB_OUTPUT"
+          reported=$(dist/git-scrub-linux-amd64 --version)
+          echo "$reported"
+          if [ "$reported" != "git-scrub $VERSION" ]; then
+            echo "::error::binary reports '$reported', expected 'git-scrub $VERSION'"
+            exit 1
           fi
-
-          echo "version=$NEXT_VERSION" >> "$GITHUB_OUTPUT"
-          echo "Next version: $NEXT_VERSION"
 
       # Create tar.gz archives and checksums.txt
       - name: Create tar.gz archives
-        if: steps.version.outputs.release_needed == 'true'
         run: |
-          VERSION=${{ steps.version.outputs.version }}
           cd dist
 
           for binary in git-scrub-linux-amd64 git-scrub-linux-arm64 git-scrub-darwin-amd64 git-scrub-darwin-arm64; do
@@ -206,14 +268,11 @@ jobs:
 
       # Build .deb and .rpm packages via nFPM
       - name: Build Linux packages (deb/rpm)
-        if: steps.version.outputs.release_needed == 'true'
         run: |
-          VERSION=${{ steps.version.outputs.version }}
           chmod +x packaging/scripts/*.sh
 
           # amd64 packages
           export GOARCH=amd64
-          export VERSION="$VERSION"
           envsubst < packaging/nfpm.yaml > /tmp/nfpm-amd64.yaml
           nfpm package --packager deb --config /tmp/nfpm-amd64.yaml --target dist/
           nfpm package --packager rpm --config /tmp/nfpm-amd64.yaml --target dist/
@@ -229,9 +288,7 @@ jobs:
 
       # Generate the Homebrew formula from the template
       - name: Generate Homebrew formula
-        if: steps.version.outputs.release_needed == 'true'
         run: |
-          VERSION=${{ steps.version.outputs.version }}
           cd dist
 
           SHA256_DARWIN_AMD64=$(grep "darwin-amd64" checksums.txt | cut -d' ' -f1)
@@ -251,7 +308,6 @@ jobs:
 
       # Run semantic-release -- creates the GH Release and attaches artefacts
       - name: Run semantic-release
-        if: steps.version.outputs.release_needed == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: semantic-release
@@ -260,9 +316,7 @@ jobs:
       # does. HOMEBREW_APP_* is the org-wide credential of the app installed on
       # the tap; a fork without it skips these two steps.
       - name: Mint homebrew-tap token
-        if: >-
-          steps.version.outputs.release_needed == 'true' &&
-          vars.HOMEBREW_APP_CLIENT_ID != ''
+        if: vars.HOMEBREW_APP_CLIENT_ID != ''
         id: tap-token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -272,12 +326,9 @@ jobs:
           repositories: homebrew-tap
 
       - name: Push formula to homebrew-tap
-        if: >-
-          steps.version.outputs.release_needed == 'true' &&
-          vars.HOMEBREW_APP_CLIENT_ID != ''
+        if: vars.HOMEBREW_APP_CLIENT_ID != ''
         env:
           GH_TOKEN: ${{ steps.tap-token.outputs.token }}
-          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
           git clone "https://x-access-token:${GH_TOKEN}@github.com/hyperi-io/homebrew-tap.git" tap
