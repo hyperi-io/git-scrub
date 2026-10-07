@@ -272,8 +272,7 @@ mod tests {
         let r = ComposerLockRewriter::new(&[&bad]).unwrap();
         let out = r.strip(content.as_bytes()).expect("rewrite");
         let parsed: Value = serde_json::from_slice(&out).unwrap();
-        let packages = parsed.get("packages").unwrap().as_array().unwrap();
-        assert!(packages.is_empty());
+        assert_eq!(parsed["packages"], serde_json::json!([]));
     }
 
     #[test]
@@ -288,13 +287,6 @@ mod tests {
         let parsed: Value = serde_json::from_slice(&out).unwrap();
         // packages key must remain as an array (even when empty), not deleted.
         assert!(parsed.get("packages").unwrap().is_array());
-        assert!(
-            parsed
-                .get("packages")
-                .unwrap()
-                .as_array()
-                .unwrap()
-                .is_empty()
-        );
+        assert_eq!(parsed["packages"], serde_json::json!([]));
     }
 }

@@ -1,6 +1,7 @@
 # Project:   git-scrub
 # File:      packaging/homebrew/git-scrub.rb
-# Purpose:   Homebrew formula template for git-scrub
+# Purpose:   Homebrew formula template for git-scrub, rendered into
+#            hyperi-io/homebrew-tap Formula/git-scrub.rb by each release
 # Language:  Ruby
 #
 # License:   Apache-2.0

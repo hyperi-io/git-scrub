@@ -127,7 +127,7 @@ in the runbook — install and `gh auth login` to unlock those sections.
 | Channel | Platform | Status |
 |---|---|---|
 | `curl ... \| sh` installer | Linux / macOS | scaffolded (ships at first release) |
-| Homebrew tap (`brew install hyperi-io/git-scrub/git-scrub`) | macOS / Linux | scaffolded (ships at first release) |
+| Homebrew tap (`brew install hyperi-io/tap/git-scrub`) | macOS / Linux | each release updates the formula |
 | `.deb` via nFPM | Debian / Ubuntu | scaffolded (ships at first release) |
 | `.rpm` via nFPM | Fedora / RHEL | scaffolded (ships at first release) |
 | `.apk` via nFPM | Alpine | scaffolded (ships at first release) |

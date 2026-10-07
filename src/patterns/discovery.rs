@@ -256,8 +256,8 @@ mod tests {
         // No override, and we can't fully control the system; this asserts
         // that the API path of "no override, nothing exists" returns Embedded
         // is exercised by the embedded constant being non-empty.
-        assert!(!EMBEDDED_ATTRIBUTION.is_empty());
-        assert!(!EMBEDDED_FILES.is_empty());
+        assert_ne!(EMBEDDED_ATTRIBUTION, "");
+        assert_ne!(EMBEDDED_FILES, "");
     }
 
     #[test]
@@ -283,7 +283,7 @@ mod tests {
 
     #[test]
     fn embedded_supply_chain_not_empty() {
-        assert!(!EMBEDDED_SUPPLY_CHAIN.is_empty());
+        assert_ne!(EMBEDDED_SUPPLY_CHAIN, "");
     }
 
     #[test]
@@ -298,12 +298,12 @@ mod tests {
 
     #[test]
     fn embedded_ai_curate_not_empty() {
-        assert!(!EMBEDDED_AI_CURATE.is_empty());
+        assert_ne!(EMBEDDED_AI_CURATE, "");
     }
 
     #[test]
     fn embedded_policy_files_not_empty() {
-        assert!(!EMBEDDED_AI_TRAINING_POLICY.is_empty());
-        assert!(!EMBEDDED_ROBOTS_TXT.is_empty());
+        assert_ne!(EMBEDDED_AI_TRAINING_POLICY, "");
+        assert_ne!(EMBEDDED_ROBOTS_TXT, "");
     }
 }
