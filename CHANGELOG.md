@@ -1,3 +1,12 @@
+## [1.0.3](https://github.com/hyperi-io/git-scrub/compare/v1.0.2...v1.0.3) (2026-10-07)
+
+
+### Bug Fixes
+
+* **ci:** mint the App token from the client ID, not the app ID ([#2](https://github.com/hyperi-io/git-scrub/issues/2)) ([768f3cc](https://github.com/hyperi-io/git-scrub/commit/768f3ccc52eff1975eb2ad8dbeda23b89f0f1e4d)), closes [hyperi-io/hyperi-ci#100](https://github.com/hyperi-io/hyperi-ci/issues/100)
+* **ci:** onboard Renovate and move onto current action majors ([#3](https://github.com/hyperi-io/git-scrub/issues/3)) ([762df9f](https://github.com/hyperi-io/git-scrub/commit/762df9fbd1c22ba188a0739b6a1c17c9c75260f2)), closes [hyperi-io/hyperi-ci#100](https://github.com/hyperi-io/hyperi-ci/issues/100)
+* repair the release build and publish to the hyperi-io tap ([#8](https://github.com/hyperi-io/git-scrub/issues/8)) ([fff98c8](https://github.com/hyperi-io/git-scrub/commit/fff98c8fde83d74dad1bf8ceee715f7e99218c4d))
+
 ## [1.0.2](https://github.com/hyperi-io/git-scrub/compare/v1.0.1...v1.0.2) (2026-05-26)
 
 
