@@ -102,9 +102,9 @@ gitignore_additions:
     fn empty_config_is_valid() {
         let cfg: CurateConfig = serde_yaml_ng::from_str("{}").unwrap();
         assert!(cfg.gitignore_additions.is_empty());
-        assert!(cfg.policy_files.is_empty());
+        assert_eq!(cfg.policy_files, Vec::<String>::new());
         assert!(cfg.reference_scrub.patterns.is_empty());
-        assert!(cfg.all_gitignore_paths().is_empty());
+        assert_eq!(cfg.all_gitignore_paths(), Vec::<&str>::new());
     }
 
     #[test]

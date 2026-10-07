@@ -210,10 +210,10 @@ fn invert_single_range(range: &str) -> Option<String> {
         .find(|clause| clause.starts_with(">=") || clause.starts_with('>'))?;
     if let Some(rest) = lower_bound.strip_prefix(">=") {
         Some(format!("< {}", rest.trim()))
-    } else if let Some(rest) = lower_bound.strip_prefix('>') {
-        Some(format!("<= {}", rest.trim()))
     } else {
-        None
+        lower_bound
+            .strip_prefix('>')
+            .map(|rest| format!("<= {}", rest.trim()))
     }
 }
 
