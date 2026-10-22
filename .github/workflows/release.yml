@@ -37,13 +37,13 @@ jobs:
       version: ${{ steps.next.outputs.version }}
       release_needed: ${{ steps.next.outputs.release_needed }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "lts/*"
 
@@ -79,7 +79,7 @@ jobs:
     needs: version
     if: needs.version.outputs.release_needed == 'true'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -118,7 +118,7 @@ jobs:
           cp target/aarch64-unknown-linux-gnu/release/git-scrub dist/git-scrub-linux-arm64
 
       - name: Upload linux binaries
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: linux-binaries
           path: |
@@ -135,7 +135,7 @@ jobs:
     needs: version
     if: needs.version.outputs.release_needed == 'true'
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -164,7 +164,7 @@ jobs:
           cp target/aarch64-apple-darwin/release/git-scrub dist/git-scrub-darwin-arm64
 
       - name: Upload macOS binaries
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: macos-binaries
           path: |
@@ -187,13 +187,13 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: "lts/*"
 
@@ -209,7 +209,7 @@ jobs:
           sudo apt-get install -y gettext-base
 
       - name: Install Go (for nFPM)
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
         with:
           go-version: ">=1.22"
           cache: false
@@ -221,13 +221,13 @@ jobs:
 
       # Download artefacts from the build jobs
       - name: Download linux binaries
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: linux-binaries
           path: dist/
 
       - name: Download macOS binaries
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: macos-binaries
           path: dist/
@@ -318,7 +318,7 @@ jobs:
       - name: Mint homebrew-tap token
         if: vars.HOMEBREW_APP_CLIENT_ID != ''
         id: tap-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.HOMEBREW_APP_CLIENT_ID }}
           private-key: ${{ secrets.HOMEBREW_APP_PRIVATE_KEY }}
