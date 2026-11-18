@@ -8,6 +8,7 @@
 # Override defaults with HYPERCI_* env vars.
 # Reference: config/defaults.yaml in hyperi-ci.
 
+classification: general-oss
 language: rust
 project:
   status: experimental
