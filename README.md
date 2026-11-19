@@ -1,29 +1,16 @@
 # git-scrub
 
-Surgical removal of unwanted content from git history. Two use cases:
+Surgical removal of unwanted content from git history.
 
-- **AI scrub** (`git scrub ai` / `git-scrub ai`) — remove AI tool residue:
-  artefact files (`.claude/`, `.cursor/`, `.codex/`, …) and attribution
-  trailers (`Co-Authored-By: Claude`, `Co-authored-by: Cursor`,
-  `🤖 Generated with [Claude Code]`, …). Opinionated pattern library
-  covers Claude, Copilot, Cursor, Codex, Aider, Gemini, WindSurf.
-- **Spill scrub** (`git scrub spill` / `git-scrub spill`) —
-  incident response: remove a specific file / path that "got away"
-  past the preventive layers. Operator supplies globs; the tool
-  provides safety scaffolding + runbook. (`spill paths` ships in v1;
-  `spill text` / `spill secrets` are scaffolded, not wired.)
-- **Supply chain scrub** (`git scrub supply` / `git-scrub supply`) —
-  strip compromised lockfile entries from history across all ten
-  package ecosystems (Cargo, npm, pnpm, yarn, bun, uv, pip, poetry,
-  go, composer). Driven by a bundled advisory snapshot; also accepts
-  ad-hoc package lists for incident response.
-- **Clean** (`git scrub clean` / `git-scrub clean`) — single-pass
-  composition of any combination of AI scrub, spill-paths purge, and
-  supply chain scrub. One backup, one verify, one runbook.
-- **Audit** (`git scrub audit` / `git-scrub audit`) — read-only
-  survey. Runs every available check and emits a consolidated markdown
-  report covering AI residue, supply chain hits, and working-tree
-  curation state.
+| Command | What it does |
+|---|---|
+| `git scrub ai` | Removes AI tool residue: artefact files (`.claude/`, `.cursor/`, `.codex/` and more) and attribution trailers (`Co-Authored-By: Claude`, `Co-authored-by: Cursor`, `🤖 Generated with [Claude Code]`). The patterns cover Claude, Copilot, Cursor, Codex, Aider, Gemini and Windsurf. |
+| `git scrub spill` | Incident response: removes a file or path that got past the preventive layers. You supply the globs, and the tool adds the backup, verify and runbook. `spill paths` ships. `spill text` and `spill secrets` are scaffolded, not wired. |
+| `git scrub supply` | Strips compromised lockfile entries from history across ten package ecosystems (Cargo, npm, pnpm, yarn, bun, uv, pip, poetry, go, composer), from a bundled advisory snapshot or a package list you supply. |
+| `git scrub clean` | Runs any mix of the three above in one pass, with one backup, one verify and one runbook. |
+| `git scrub audit` | A read-only survey of AI residue, supply chain hits and working-tree curation, as one markdown report. |
+
+Each also runs as `git-scrub <command>`.
 
 ## Name and invocation
 
@@ -42,10 +29,10 @@ are equivalent surfaces. Pick whichever you prefer.
 
 ## Status
 
-**Pre-release.** No distribution channel ships yet — install via
-`cargo install` from source.
+**Released.** Each release ships Linux and macOS binaries, `.deb` and
+`.rpm` packages and a Homebrew formula. See *Install* below.
 
-What works today (cross-platform: Linux + macOS + Windows):
+What works (cross-platform: Linux + macOS + Windows):
 
 - `git scrub ai composite` — strip attribution trailers AND drop AI
   artefact files in a single engine pass
@@ -83,7 +70,7 @@ What works today (cross-platform: Linux + macOS + Windows):
 
 What's not done yet (still v1):
 
-- Distribution channels — see *Distribution* below
+- Windows packages and `cargo install` (see *Install* below)
 
 What's deferred (v2):
 
@@ -92,10 +79,6 @@ What's deferred (v2):
   unusual record forms
 - Per-package enumeration in supply chain runbook (currently reports
   blob counts only)
-
-See [`docs/superpowers/plans/2026-05-13-git-scrub.md`](docs/superpowers/plans/2026-05-13-git-scrub.md)
-for the full design. Note: that path is gitignored locally; the canonical
-design also lives in the conversation it came from.
 
 ## Design tenets
 
@@ -122,23 +105,28 @@ shells out to. The optional [`gh`](https://cli.github.com/) CLI enables
 fork enumeration, closed-PR enumeration, and branch-protection probes
 in the runbook — install and `gh auth login` to unlock those sections.
 
-## Distribution
+## Install
 
-| Channel | Platform | Status |
-|---|---|---|
-| `curl ... \| sh` installer | Linux / macOS | scaffolded (ships at first release) |
-| Homebrew tap (`brew install hyperi-io/tap/git-scrub`) | macOS / Linux | each release updates the formula |
-| `.deb` via nFPM | Debian / Ubuntu | scaffolded (ships at first release) |
-| `.rpm` via nFPM | Fedora / RHEL | scaffolded (ships at first release) |
-| `.apk` via nFPM | Alpine | scaffolded (ships at first release) |
-| `cargo install git-scrub` | Linux / macOS / Windows | planned for v1.x |
-| winget / Scoop / Chocolatey | Windows | planned for v1.x |
+```bash
+brew install hyperi-io/tap/git-scrub
+```
 
-Install via the curl installer once the first release tag exists:
+or
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/hyperi-io/git-scrub/main/packaging/install.sh | sh
 ```
+
+| Channel | Platform | Status |
+|---|---|---|
+| Homebrew tap (`brew install hyperi-io/tap/git-scrub`) | macOS / Linux | each release updates the formula |
+| `curl ... \| sh` installer | Linux / macOS | installs the latest release |
+| Release tarballs | Linux / macOS, amd64 and arm64 | on every [release](https://github.com/hyperi-io/git-scrub/releases) |
+| `.deb` via nFPM | Debian / Ubuntu, amd64 and arm64 | on every release |
+| `.rpm` via nFPM | Fedora / RHEL, x86_64 and aarch64 | on every release |
+| `.apk` via nFPM | Alpine | planned |
+| `cargo install git-scrub` | Linux / macOS / Windows | planned |
+| winget / Scoop / Chocolatey | Windows | planned. Build from source meanwhile |
 
 ## Building from source
 
