@@ -145,7 +145,7 @@ fn load_config(explicit: Option<&Path>) -> Result<SupplyConfig> {
         explicit,
     )
     .context("loading supply-chain pattern file")?;
-    serde_yaml_ng::from_str(&loaded.content).context("parsing supply-chain.yaml")
+    serde_saphyr::from_str(&loaded.content).context("parsing supply-chain.yaml")
 }
 
 fn build_lockfile_rewriters(

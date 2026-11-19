@@ -93,50 +93,43 @@ impl LockfileRewriter for PnpmLockRewriter {
     }
 
     fn strip(&self, content: &[u8]) -> Option<Vec<u8>> {
-        let mut doc: serde_yaml_ng::Value = serde_yaml_ng::from_slice(content).ok()?;
+        let mut doc: serde_json::Value = serde_saphyr::from_slice(content).ok()?;
         let mut changed = false;
 
         // Strip from `packages:` and `snapshots:` (both are `name@version` keyed maps).
         for top_key in ["packages", "snapshots"] {
-            let Some(map) = doc.get_mut(top_key).and_then(|v| v.as_mapping_mut()) else {
+            let Some(map) = doc.get_mut(top_key).and_then(|v| v.as_object_mut()) else {
                 continue;
             };
-            let keys_to_remove: Vec<serde_yaml_ng::Value> = map
+            let keys_to_remove: Vec<String> = map
                 .keys()
-                .filter_map(|k| {
-                    let key_str = k.as_str()?;
-                    let (name, version) = Self::parse_key(key_str)?;
-                    if self.matches(name, version) {
-                        Some(k.clone())
-                    } else {
-                        None
-                    }
+                .filter(|k| {
+                    Self::parse_key(k).is_some_and(|(name, version)| self.matches(name, version))
                 })
+                .cloned()
                 .collect();
             for k in keys_to_remove {
-                map.remove(&k);
+                map.shift_remove(&k);
                 changed = true;
             }
         }
 
         // Strip from `importers.*.{dependencies,devDependencies,optionalDependencies}`.
-        if let Some(importers) = doc.get_mut("importers").and_then(|v| v.as_mapping_mut()) {
+        if let Some(importers) = doc.get_mut("importers").and_then(|v| v.as_object_mut()) {
             for (_importer_key, importer_value) in importers.iter_mut() {
-                let Some(importer_map) = importer_value.as_mapping_mut() else {
+                let Some(importer_map) = importer_value.as_object_mut() else {
                     continue;
                 };
                 for dep_section in ["dependencies", "devDependencies", "optionalDependencies"] {
-                    let section_key = serde_yaml_ng::Value::String(dep_section.to_string());
                     let Some(deps) = importer_map
-                        .get_mut(&section_key)
-                        .and_then(|v| v.as_mapping_mut())
+                        .get_mut(dep_section)
+                        .and_then(|v| v.as_object_mut())
                     else {
                         continue;
                     };
-                    let to_remove: Vec<serde_yaml_ng::Value> = deps
+                    let to_remove: Vec<String> = deps
                         .iter()
-                        .filter_map(|(k, v)| {
-                            let name = k.as_str()?;
+                        .filter_map(|(name, v)| {
                             // Newer pnpm: value is a map `{specifier: ..., version: ...}`.
                             // Older inline form: value is a plain version string.
                             let version_raw = v
@@ -150,14 +143,14 @@ impl LockfileRewriter for PnpmLockRewriter {
                                 None => version_raw,
                             };
                             if self.matches(name, version_core) {
-                                Some(k.clone())
+                                Some(name.clone())
                             } else {
                                 None
                             }
                         })
                         .collect();
                     for k in to_remove {
-                        deps.remove(&k);
+                        deps.shift_remove(&k);
                         changed = true;
                     }
                 }
@@ -167,7 +160,7 @@ impl LockfileRewriter for PnpmLockRewriter {
         if !changed {
             return None;
         }
-        serde_yaml_ng::to_string(&doc).ok().map(String::into_bytes)
+        serde_saphyr::to_string(&doc).ok().map(String::into_bytes)
     }
 }
 

@@ -20,8 +20,8 @@ struct SupplyChainOutput {
     generated_at: String,
     sources: Vec<String>,
     compromised: Vec<OutputCompromised>,
-    lockfiles: serde_yaml_ng::Mapping,
-    vendored_paths: serde_yaml_ng::Mapping,
+    lockfiles: serde_json::Map<String, serde_json::Value>,
+    vendored_paths: serde_json::Map<String, serde_json::Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -108,8 +108,10 @@ pub fn write_yaml(path: &Path, advisories: &[NormalisedAdvisory]) -> Result<()> 
         })
         .collect();
 
-    let lockfiles: serde_yaml_ng::Mapping = serde_yaml_ng::from_str(LOCKFILES_YAML)?;
-    let vendored_paths: serde_yaml_ng::Mapping = serde_yaml_ng::from_str(VENDORED_PATHS_YAML)?;
+    let lockfiles: serde_json::Map<String, serde_json::Value> =
+        serde_saphyr::from_str(LOCKFILES_YAML)?;
+    let vendored_paths: serde_json::Map<String, serde_json::Value> =
+        serde_saphyr::from_str(VENDORED_PATHS_YAML)?;
 
     let output = SupplyChainOutput {
         generated_at,
@@ -124,7 +126,7 @@ pub fn write_yaml(path: &Path, advisories: &[NormalisedAdvisory]) -> Result<()> 
         vendored_paths,
     };
 
-    let yaml = serde_yaml_ng::to_string(&output)?;
+    let yaml = serde_saphyr::to_string(&output)?;
     let header = "# config/patterns/supply-chain.yaml\n\
                   #\n\
                   # Bundled supply-chain advisory snapshot for git-scrub.\n\

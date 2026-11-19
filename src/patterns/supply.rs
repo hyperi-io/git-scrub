@@ -101,7 +101,7 @@ compromised:
     versions: ["1.6.1"]
     purge_targets: [lockfile_entry]
 "#;
-        let cfg: SupplyConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        let cfg: SupplyConfig = serde_saphyr::from_str(yaml).unwrap();
         assert_eq!(cfg.compromised.len(), 1);
         assert_eq!(cfg.compromised[0].name, "axios");
         assert!(cfg.compromised[0].purge_lockfile());
@@ -129,7 +129,7 @@ lockfiles:
 vendored_paths:
   cargo: ["vendor/{name}/"]
 "#;
-        let cfg: SupplyConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        let cfg: SupplyConfig = serde_saphyr::from_str(yaml).unwrap();
         assert_eq!(cfg.generated_at.as_deref(), Some("2026-05-19T00:00:00Z"));
         assert_eq!(
             cfg.lockfiles.get("cargo").unwrap(),
