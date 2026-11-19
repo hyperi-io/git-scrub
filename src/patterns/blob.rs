@@ -175,8 +175,8 @@ fn apply_literal(haystack: &[u8], needle: &[u8], replace: &[u8]) -> Option<Vec<u
 }
 
 /// Parse YAML into a [`BlobConfig`].
-pub fn parse_yaml(yaml: &str) -> Result<BlobConfig, serde_yaml_ng::Error> {
-    serde_yaml_ng::from_str(yaml)
+pub fn parse_yaml(yaml: &str) -> Result<BlobConfig, serde_saphyr::Error> {
+    serde_saphyr::from_str(yaml)
 }
 
 #[cfg(test)]

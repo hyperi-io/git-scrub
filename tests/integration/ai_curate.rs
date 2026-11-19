@@ -326,8 +326,8 @@ fn curate_stage4_does_not_auto_resolve_tracked_conflicts() {
 #[test]
 fn embedded_ai_curate_yaml_round_trips() {
     // Confirm the YAML parses cleanly — validates our YAML file is correct.
-    let _: serde_yaml_ng::Value =
-        serde_yaml_ng::from_str(EMBEDDED_AI_CURATE).expect("embedded ai-curate.yaml must parse");
+    let _: serde_json::Value =
+        serde_saphyr::from_str(EMBEDDED_AI_CURATE).expect("embedded ai-curate.yaml must parse");
 }
 
 // ── Custom config path ────────────────────────────────────────────────────────

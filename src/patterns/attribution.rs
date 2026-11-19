@@ -257,8 +257,8 @@ fn collapse_blank_runs<'a>(lines: &[&'a [u8]]) -> Vec<&'a [u8]> {
 }
 
 /// Parse YAML bytes into an [`AttributionConfig`].
-pub fn parse_yaml(yaml: &str) -> Result<AttributionConfig, serde_yaml_ng::Error> {
-    serde_yaml_ng::from_str(yaml)
+pub fn parse_yaml(yaml: &str) -> Result<AttributionConfig, serde_saphyr::Error> {
+    serde_saphyr::from_str(yaml)
 }
 
 #[cfg(test)]
