@@ -1,3 +1,9 @@
+## [1.0.4](https://github.com/hyperi-io/git-scrub/compare/v1.0.3...v1.0.4) (2026-11-19)
+
+### Bug Fixes
+
+* **deps:** swap serde_yaml_ng for serde-saphyr ([88ce7a8](https://github.com/hyperi-io/git-scrub/commit/88ce7a8ee17afa7ba7f435dbad48807febb9e68a)), closes [#10](https://github.com/hyperi-io/git-scrub/issues/10)
+
 ## [1.0.3](https://github.com/hyperi-io/git-scrub/compare/v1.0.2...v1.0.3) (2026-10-07)
 
 
