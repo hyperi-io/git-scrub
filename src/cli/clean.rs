@@ -286,7 +286,7 @@ fn build_lockfile_rewriters(
     )
     .context("loading supply-chain pattern file")?;
     let cfg: SupplyConfig =
-        serde_yaml_ng::from_str(&loaded.content).context("parsing supply-chain.yaml")?;
+        serde_saphyr::from_str(&loaded.content).context("parsing supply-chain.yaml")?;
 
     let mut by_eco: BTreeMap<&str, Vec<&CompromisedPackage>> = BTreeMap::new();
     for p in &cfg.compromised {

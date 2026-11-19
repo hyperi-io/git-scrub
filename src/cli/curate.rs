@@ -219,7 +219,7 @@ fn load_config(override_path: Option<&Path>) -> Result<crate::patterns::curate::
         override_path,
     )
     .context("loading ai-curate.yaml")?;
-    let cfg = serde_yaml_ng::from_str(&loaded.content).context("parsing ai-curate.yaml")?;
+    let cfg = serde_saphyr::from_str(&loaded.content).context("parsing ai-curate.yaml")?;
     Ok(cfg)
 }
 

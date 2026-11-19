@@ -192,8 +192,8 @@ fn compile_glob(section: &'static str, tool: &str, pattern: &str) -> Result<Glob
 }
 
 /// Parse YAML bytes into a [`FileConfig`].
-pub fn parse_yaml(yaml: &str) -> Result<FileConfig, serde_yaml_ng::Error> {
-    serde_yaml_ng::from_str(yaml)
+pub fn parse_yaml(yaml: &str) -> Result<FileConfig, serde_saphyr::Error> {
+    serde_saphyr::from_str(yaml)
 }
 
 #[cfg(test)]

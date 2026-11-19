@@ -232,7 +232,7 @@ fn audit_supply(
     )
     .context("loading supply-chain pattern file")?;
     let cfg: SupplyConfig =
-        serde_yaml_ng::from_str(&loaded.content).context("parsing supply-chain.yaml")?;
+        serde_saphyr::from_str(&loaded.content).context("parsing supply-chain.yaml")?;
 
     let rewriters = build_lockfile_rewriters(&cfg)?;
 

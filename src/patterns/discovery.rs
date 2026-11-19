@@ -247,8 +247,8 @@ mod tests {
     #[test]
     fn embedded_fallback_is_valid_yaml() {
         // Sanity: the compile-time strings must parse.
-        let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(EMBEDDED_ATTRIBUTION).unwrap();
-        let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(EMBEDDED_FILES).unwrap();
+        let _: serde_json::Value = serde_saphyr::from_str(EMBEDDED_ATTRIBUTION).unwrap();
+        let _: serde_json::Value = serde_saphyr::from_str(EMBEDDED_FILES).unwrap();
     }
 
     #[test]
@@ -272,13 +272,13 @@ mod tests {
 
     #[test]
     fn embedded_supply_chain_parses_as_yaml() {
-        let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(EMBEDDED_SUPPLY_CHAIN).unwrap();
+        let _: serde_json::Value = serde_saphyr::from_str(EMBEDDED_SUPPLY_CHAIN).unwrap();
     }
 
     #[test]
     fn embedded_supply_chain_round_trips_to_config_type() {
         let _: crate::patterns::SupplyConfig =
-            serde_yaml_ng::from_str(EMBEDDED_SUPPLY_CHAIN).unwrap();
+            serde_saphyr::from_str(EMBEDDED_SUPPLY_CHAIN).unwrap();
     }
 
     #[test]
@@ -288,12 +288,12 @@ mod tests {
 
     #[test]
     fn embedded_ai_curate_parses_as_yaml() {
-        let _: serde_yaml_ng::Value = serde_yaml_ng::from_str(EMBEDDED_AI_CURATE).unwrap();
+        let _: serde_json::Value = serde_saphyr::from_str(EMBEDDED_AI_CURATE).unwrap();
     }
 
     #[test]
     fn embedded_ai_curate_round_trips_to_curate_config() {
-        let _: crate::patterns::CurateConfig = serde_yaml_ng::from_str(EMBEDDED_AI_CURATE).unwrap();
+        let _: crate::patterns::CurateConfig = serde_saphyr::from_str(EMBEDDED_AI_CURATE).unwrap();
     }
 
     #[test]

@@ -74,7 +74,7 @@ reference_scrub:
     - find: "Claude Code"
       replace: "local"
 "#;
-        let cfg: CurateConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        let cfg: CurateConfig = serde_saphyr::from_str(yaml).unwrap();
         assert_eq!(cfg.gitignore_additions.len(), 2);
         assert_eq!(cfg.policy_files, vec!["AI-TRAINING-POLICY.md"]);
         assert_eq!(cfg.reference_scrub.patterns.len(), 1);
@@ -89,7 +89,7 @@ gitignore_additions:
   a: [".claude/", "TODO.md"]
   b: [".claude/", "STATE.md"]
 "#;
-        let cfg: CurateConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        let cfg: CurateConfig = serde_saphyr::from_str(yaml).unwrap();
         let paths = cfg.all_gitignore_paths();
         assert!(paths.contains(&".claude/"));
         assert!(paths.contains(&"TODO.md"));
@@ -100,7 +100,7 @@ gitignore_additions:
 
     #[test]
     fn empty_config_is_valid() {
-        let cfg: CurateConfig = serde_yaml_ng::from_str("{}").unwrap();
+        let cfg: CurateConfig = serde_saphyr::from_str("{}").unwrap();
         assert!(cfg.gitignore_additions.is_empty());
         assert_eq!(cfg.policy_files, Vec::<String>::new());
         assert!(cfg.reference_scrub.patterns.is_empty());
@@ -114,7 +114,7 @@ gitignore_additions:
   z_group: ["zzz.md", "aaa.md"]
   a_group: ["mmm.md"]
 "#;
-        let cfg: CurateConfig = serde_yaml_ng::from_str(yaml).unwrap();
+        let cfg: CurateConfig = serde_saphyr::from_str(yaml).unwrap();
         let paths = cfg.all_gitignore_paths();
         let mut sorted = paths.clone();
         sorted.sort_unstable();
